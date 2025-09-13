@@ -32,7 +32,6 @@ class UserController extends Controller
             'message' => 'Credenciales incorrectas'
         ], 401);
     }
-
     public function register(Request $request)
     {
         // Validación de los datos
