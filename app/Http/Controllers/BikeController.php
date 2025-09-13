@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Bike;
-use App\Models\Station;
+use App\Models\Estacion;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
@@ -12,7 +12,7 @@ class BikeController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Bike::with('station')->active();
+        $query = Bike::with('estacion')->active(); // Cambio: estacion en lugar de station
 
         // Filtros
         if ($request->has('type') && $request->type) {
@@ -23,17 +23,20 @@ class BikeController extends Controller
             $query->where('status', $request->status);
         }
 
-        if ($request->has('station_id') && $request->station_id) {
-            $query->inStation($request->station_id);
+        if ($request->has('estacion_id') && $request->estacion_id) {
+            $query->inStation($request->estacion_id);
         }
 
         if ($request->has('available') && $request->boolean('available')) {
             $query->available();
         }
 
-        // Búsqueda por código
+        // Búsqueda por código o descripción
         if ($request->has('search') && $request->search) {
-            $query->where('code', 'LIKE', "%{$request->search}%");
+            $query->where(function($q) use ($request) {
+                $q->where('code', 'LIKE', "%{$request->search}%")
+                    ->orWhere('description', 'LIKE', "%{$request->search}%");
+            });
         }
 
         $bikes = $query->paginate($request->per_page ?? 15);
@@ -52,11 +55,11 @@ class BikeController extends Controller
                     'is_electric' => $bike->is_electric,
                     'can_be_rented' => $bike->canBeRented(),
                     'total_usage_time' => $bike->total_usage_time,
-                    'station' => $bike->station ? [
-                        'id' => $bike->station->id,
-                        'name' => $bike->station->name,
-                        'code' => $bike->station->code,
-                        'type' => $bike->station->type,
+                    'estacion' => $bike->estacion ? [ // Cambio: estacion en lugar de station
+                        'id' => $bike->estacion->id,
+                        'name' => $bike->estacion->name,
+                        'code' => $bike->estacion->code,
+                        'type' => $bike->estacion->type,
                     ] : null,
                     'created_at' => $bike->created_at,
                 ];
@@ -72,7 +75,7 @@ class BikeController extends Controller
 
     public function show(Bike $bike): JsonResponse
     {
-        $bike->load(['station', 'currentUsage.user', 'activeDamageReports']);
+        $bike->load(['estacion', 'currentUsage.user', 'activeDamageReports']);
 
         return response()->json([
             'success' => true,
@@ -91,11 +94,11 @@ class BikeController extends Controller
                 'is_electric' => $bike->is_electric,
                 'can_be_rented' => $bike->canBeRented(),
                 'total_usage_time' => $bike->total_usage_time,
-                'station' => $bike->station ? [
-                    'id' => $bike->station->id,
-                    'name' => $bike->station->name,
-                    'code' => $bike->station->code,
-                    'type' => $bike->station->type,
+                'estacion' => $bike->estacion ? [
+                    'id' => $bike->estacion->id,
+                    'name' => $bike->estacion->name,
+                    'code' => $bike->estacion->code,
+                    'type' => $bike->estacion->type,
                 ] : null,
                 'current_usage' => $bike->currentUsage ? [
                     'id' => $bike->currentUsage->id,
@@ -122,7 +125,7 @@ class BikeController extends Controller
         $validated = $request->validate([
             'code' => 'required|string|max:20|unique:bikes',
             'type' => ['required', Rule::in(['tradicional', 'electrica'])],
-            'station_id' => 'required|exists:stations,id',
+            'estacion_id' => 'required|exists:estaciones,id', // Cambio: estaciones en lugar de stations
             'battery_level' => 'nullable|integer|between:0,100',
             'description' => 'nullable|string',
             'purchase_price' => 'nullable|numeric|min:0',
@@ -131,8 +134,8 @@ class BikeController extends Controller
         ]);
 
         // Verificar capacidad de la estación
-        $station = Station::find($validated['station_id']);
-        if (!$station->canAcceptBike()) {
+        $estacion = Estacion::find($validated['estacion_id']);
+        if (!$estacion->canAcceptBike()) {
             return response()->json([
                 'success' => false,
                 'message' => 'La estación ha alcanzado su capacidad máxima'
@@ -152,7 +155,7 @@ class BikeController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $bike->load('station'),
+            'data' => $bike->load('estacion'),
             'message' => 'Bicicleta registrada exitosamente'
         ], 201);
     }
@@ -163,7 +166,7 @@ class BikeController extends Controller
             'code' => 'sometimes|string|max:20|unique:bikes,code,' . $bike->id,
             'type' => ['sometimes', Rule::in(['tradicional', 'electrica'])],
             'status' => ['sometimes', Rule::in(['disponible', 'en_uso', 'en_reparacion', 'mantenimiento'])],
-            'station_id' => 'sometimes|exists:stations,id',
+            'estacion_id' => 'sometimes|exists:estaciones,id',
             'battery_level' => 'nullable|integer|between:0,100',
             'description' => 'nullable|string',
             'purchase_price' => 'nullable|numeric|min:0',
@@ -173,9 +176,9 @@ class BikeController extends Controller
         ]);
 
         // Si se cambia la estación, verificar capacidad
-        if (isset($validated['station_id']) && $validated['station_id'] !== $bike->station_id) {
-            $station = Station::find($validated['station_id']);
-            if (!$station->canAcceptBike()) {
+        if (isset($validated['estacion_id']) && $validated['estacion_id'] !== $bike->estacion_id) {
+            $estacion = Estacion::find($validated['estacion_id']);
+            if (!$estacion->canAcceptBike()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'La estación destino ha alcanzado su capacidad máxima'
@@ -187,7 +190,7 @@ class BikeController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $bike->fresh()->load('station'),
+            'data' => $bike->fresh()->load('estacion'),
             'message' => 'Bicicleta actualizada exitosamente'
         ]);
     }
@@ -213,13 +216,13 @@ class BikeController extends Controller
     public function rent(Request $request, Bike $bike): JsonResponse
     {
         $validated = $request->validate([
-            'station_id' => 'required|exists:stations,id',
+            'estacion_id' => 'required|exists:estaciones,id',
         ]);
 
         try {
             $usage = $bike->startUsage(
                 auth()->id(),
-                $validated['station_id']
+                $validated['estacion_id']
             );
 
             return response()->json([
@@ -248,14 +251,14 @@ class BikeController extends Controller
     public function returnBike(Request $request, Bike $bike): JsonResponse
     {
         $validated = $request->validate([
-            'station_id' => 'required|exists:stations,id',
+            'estacion_id' => 'required|exists:estaciones,id',
             'notes' => 'nullable|string|max:500',
         ]);
 
         try {
             // Verificar capacidad de la estación de retorno
-            $station = Station::find($validated['station_id']);
-            if (!$station->canAcceptBike()) {
+            $estacion = Estacion::find($validated['estacion_id']);
+            if (!$estacion->canAcceptBike()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'La estación de retorno ha alcanzado su capacidad máxima'
@@ -263,7 +266,7 @@ class BikeController extends Controller
             }
 
             $usage = $bike->endUsage(
-                $validated['station_id'],
+                $validated['estacion_id'],
                 $validated['notes'] ?? null
             );
 
@@ -276,45 +279,6 @@ class BikeController extends Controller
                 ],
                 'message' => 'Bicicleta devuelta exitosamente'
             ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 422);
-        }
-    }
-
-    public function reportDamage(Request $request, Bike $bike): JsonResponse
-    {
-        $validated = $request->validate([
-            'description' => 'required|string|max:1000',
-            'severity' => ['required', Rule::in(['leve', 'moderado', 'grave'])],
-            'photos' => 'nullable|array|max:5',
-            'photos.*' => 'image|mimes:jpeg,png,jpg|max:2048',
-        ]);
-
-        try {
-            // Procesar fotos si las hay
-            $photosPaths = [];
-            if (isset($validated['photos'])) {
-                foreach ($validated['photos'] as $photo) {
-                    $path = $photo->store('damage-reports', 'public');
-                    $photosPaths[] = $path;
-                }
-            }
-
-            $report = $bike->reportDamage(
-                auth()->id(),
-                $validated['description'],
-                $validated['severity'],
-                $photosPaths
-            );
-
-            return response()->json([
-                'success' => true,
-                'data' => $report,
-                'message' => 'Reporte de daño creado exitosamente'
-            ], 201);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -353,7 +317,7 @@ class BikeController extends Controller
                 'en_reparacion' => Bike::active()->where('status', 'en_reparacion')->count(),
                 'mantenimiento' => Bike::active()->where('status', 'mantenimiento')->count(),
             ],
-            'average_usage_time' => Bike::active()->avg('total_usage_time'),
+            'average_usage_time' => Bike::active()->avg('total_usage_time') ?? 0,
             'low_battery_count' => Bike::active()
                 ->where('type', 'electrica')
                 ->where('battery_level', '<=', 20)

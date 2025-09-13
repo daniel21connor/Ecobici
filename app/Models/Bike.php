@@ -14,7 +14,7 @@ class Bike extends Model
         'code',
         'type',
         'status',
-        'station_id',
+        'estacion_id', // Cambio: era station_id
         'battery_level',
         'description',
         'purchase_price',
@@ -32,9 +32,9 @@ class Bike extends Model
     ];
 
     // Relaciones
-    public function station()
+    public function estacion() // Cambio: era station()
     {
-        return $this->belongsTo(Station::class);
+        return $this->belongsTo(Estacion::class, 'estacion_id');
     }
 
     public function usageHistory()
@@ -76,9 +76,9 @@ class Bike extends Model
         return $query->where('type', $type);
     }
 
-    public function scopeInStation($query, $stationId)
+    public function scopeInStation($query, $estacionId)
     {
-        return $query->where('station_id', $stationId);
+        return $query->where('estacion_id', $estacionId);
     }
 
     // Accessors
@@ -106,7 +106,7 @@ class Bike extends Model
     {
         return $this->usageHistory()
             ->where('status', 'completado')
-            ->sum('duration_minutes');
+            ->sum('duration_minutes') ?? 0;
     }
 
     // Métodos de utilidad
@@ -116,7 +116,7 @@ class Bike extends Model
             ($this->type === 'tradicional' || $this->battery_level > 20);
     }
 
-    public function startUsage($userId, $stationId)
+    public function startUsage($userId, $estacionId)
     {
         if (!$this->canBeRented()) {
             throw new \Exception('Esta bicicleta no está disponible para alquiler');
@@ -125,17 +125,17 @@ class Bike extends Model
         // Cambiar estado a en uso
         $this->update(['status' => 'en_uso']);
 
-        // Crear registro de uso
+        // Crear registro de uso (cuando implementes BikeUsageHistory)
         return BikeUsageHistory::create([
             'user_id' => $userId,
             'bike_id' => $this->id,
-            'start_station_id' => $stationId,
+            'start_station_id' => $estacionId,
             'start_time' => now(),
             'status' => 'activo'
         ]);
     }
 
-    public function endUsage($stationId, $notes = null)
+    public function endUsage($estacionId, $notes = null)
     {
         $currentUsage = $this->currentUsage;
 
@@ -148,7 +148,7 @@ class Bike extends Model
 
         // Actualizar el registro de uso
         $currentUsage->update([
-            'end_station_id' => $stationId,
+            'end_station_id' => $estacionId,
             'end_time' => $endTime,
             'duration_minutes' => $duration,
             'status' => 'completado',
@@ -158,7 +158,7 @@ class Bike extends Model
         // Cambiar estado y estación de la bicicleta
         $this->update([
             'status' => 'disponible',
-            'station_id' => $stationId
+            'estacion_id' => $estacionId
         ]);
 
         return $currentUsage->fresh();
@@ -166,7 +166,7 @@ class Bike extends Model
 
     public function reportDamage($userId, $description, $severity = 'leve', $photos = [])
     {
-        // Crear reporte de daño
+        // Crear reporte de daño (cuando implementes DamageReport)
         $report = DamageReport::create([
             'user_id' => $userId,
             'bike_id' => $this->id,

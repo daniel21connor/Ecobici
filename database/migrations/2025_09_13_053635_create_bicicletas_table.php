@@ -16,7 +16,10 @@ return new class extends Migration
             $table->string('code', 20)->unique(); // Código único de la bicicleta
             $table->enum('type', ['tradicional', 'electrica']); // RF-05, RF-06
             $table->enum('status', ['disponible', 'en_uso', 'en_reparacion', 'mantenimiento']); // RF-05
-            $table->foreignId('station_id')->nullable()->constrained()->nullOnDelete(); // Estación actual
+
+            // CORRECCIÓN: Especificar el nombre correcto de la tabla
+            $table->foreignId('estacion_id')->nullable()->constrained('estaciones')->nullOnDelete();
+
             $table->integer('battery_level')->nullable(); // Solo para eléctricas (0-100)
             $table->text('description')->nullable();
             $table->decimal('purchase_price', 8, 2)->nullable();
@@ -26,7 +29,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['type', 'status']);
-            $table->index(['station_id', 'status']);
+            $table->index(['estacion_id', 'status']);
         });
     }
 

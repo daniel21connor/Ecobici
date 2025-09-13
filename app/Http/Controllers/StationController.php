@@ -2,203 +2,359 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Station;
+use App\Models\Estacion;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
+use Exception;
 
 class StationController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    /**
+     * Mostrar listado de estaciones
+     * Para usuarios: solo estaciones activas
+     * Para admins: todas las estaciones
+     */
+    public function index(Request $request)
     {
-        $query = Station::with(['bikes' => function($q) {
-            $q->where('is_active', true);
-        }])->active();
+        try {
+            $query = Estacion::query();
 
-        // Filtro por tipo
-        if ($request->has('type') && $request->type) {
-            $query->ofType($request->type);
-        }
+            // Si no es admin, solo mostrar estaciones activas
+            // Cambiar hasPermissionTo() por is_admin
+            if (!auth()->user()->is_admin) {
+                $query->activas();
+            }
 
-        // Búsqueda por nombre o código
-        if ($request->has('search') && $request->search) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('name', 'LIKE', "%{$search}%")
-                    ->orWhere('code', 'LIKE', "%{$search}%");
-            });
-        }
+            // Filtros
+            if ($request->has('tipo') && $request->tipo != '') {
+                $query->porTipo($request->tipo);
+            }
 
-        $stations = $query->get()->map(function($station) {
-            return [
-                'id' => $station->id,
-                'name' => $station->name,
-                'code' => $station->code,
-                'description' => $station->description,
-                'latitude' => $station->latitude,
-                'longitude' => $station->longitude,
-                'address' => $station->address,
-                'type' => $station->type,
-                'capacity' => $station->capacity,
-                'available_bikes_count' => $station->available_bikes_count,
-                'total_bikes' => $station->total_bikes,
-                'occupancy_percentage' => $station->occupancy_percentage,
-                'is_active' => $station->is_active,
-                'created_at' => $station->created_at,
-            ];
-        });
+            if ($request->has('estado') && $request->estado != '') {
+                $query->porEstado($request->estado);
+            }
 
-        return response()->json([
-            'success' => true,
-            'data' => $stations
-        ]);
-    }
+            if ($request->has('search') && $request->search != '') {
+                $search = $request->search;
+                $query->where(function($q) use ($search) {
+                    $q->where('nombre', 'LIKE', "%{$search}%")
+                        ->orWhere('ubicacion', 'LIKE', "%{$search}%")
+                        ->orWhere('direccion', 'LIKE', "%{$search}%");
+                });
+            }
 
-    public function show(Station $station): JsonResponse
-    {
-        $station->load(['bikes' => function($q) {
-            $q->where('is_active', true);
-        }]);
+            // Ordenamiento
+            $sortField = $request->get('sort', 'nombre');
+            $sortDirection = $request->get('direction', 'asc');
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'id' => $station->id,
-                'name' => $station->name,
-                'code' => $station->code,
-                'description' => $station->description,
-                'latitude' => $station->latitude,
-                'longitude' => $station->longitude,
-                'address' => $station->address,
-                'type' => $station->type,
-                'capacity' => $station->capacity,
-                'available_bikes_count' => $station->available_bikes_count,
-                'total_bikes' => $station->total_bikes,
-                'occupancy_percentage' => $station->occupancy_percentage,
-                'is_active' => $station->is_active,
-                'bikes' => $station->bikes->map(function($bike) {
-                    return [
-                        'id' => $bike->id,
-                        'code' => $bike->code,
-                        'type' => $bike->type,
-                        'status' => $bike->status,
-                        'battery_level' => $bike->battery_level,
-                        'is_available' => $bike->is_available,
-                        'can_be_rented' => $bike->canBeRented(),
-                    ];
-                })
-            ]
-        ]);
-    }
+            $validSortFields = ['nombre', 'tipo_estacion', 'estado', 'capacidad_total', 'created_at'];
+            if (in_array($sortField, $validSortFields)) {
+                $query->orderBy($sortField, $sortDirection);
+            }
 
-    public function store(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:stations',
-            'code' => 'required|string|max:10|unique:stations',
-            'description' => 'nullable|string',
-            'latitude' => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
-            'address' => 'nullable|string|max:500',
-            'type' => ['required', Rule::in(['carga', 'descanso', 'seleccion'])],
-            'capacity' => 'required|integer|min:1|max:100',
-        ]);
+            $estaciones = $query->paginate(15);
 
-        $station = Station::create($validated);
+            // Si es una petición AJAX, devolver solo los datos
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'data' => $estaciones,
+                    'tipos' => Estacion::getTiposEstacion(),
+                    'estados' => Estacion::getEstados()
+                ]);
+            }
 
-        return response()->json([
-            'success' => true,
-            'data' => $station,
-            'message' => 'Estación creada exitosamente'
-        ], 201);
-    }
+            return response()->json([
+                'success' => true,
+                'data' => $estaciones,
+                'tipos' => Estacion::getTiposEstacion(),
+                'estados' => Estacion::getEstados()
+            ]);
 
-    public function update(Request $request, Station $station): JsonResponse
-    {
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255|unique:stations,name,' . $station->id,
-            'code' => 'sometimes|string|max:10|unique:stations,code,' . $station->id,
-            'description' => 'nullable|string',
-            'latitude' => 'sometimes|numeric|between:-90,90',
-            'longitude' => 'sometimes|numeric|between:-180,180',
-            'address' => 'nullable|string|max:500',
-            'type' => ['sometimes', Rule::in(['carga', 'descanso', 'seleccion'])],
-            'capacity' => 'sometimes|integer|min:1|max:100',
-            'is_active' => 'sometimes|boolean',
-        ]);
-
-        $station->update($validated);
-
-        return response()->json([
-            'success' => true,
-            'data' => $station->fresh(),
-            'message' => 'Estación actualizada exitosamente'
-        ]);
-    }
-
-    public function destroy(Station $station): JsonResponse
-    {
-        // Verificar que no tenga bicicletas asignadas
-        if ($station->bikes()->where('is_active', true)->exists()) {
+        } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'No se puede eliminar la estación porque tiene bicicletas asignadas'
-            ], 422);
+                'message' => 'Error al obtener las estaciones: ' . $e->getMessage()
+            ], 500);
         }
-
-        $station->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Estación eliminada exitosamente'
-        ]);
     }
 
-    public function getAvailableBikes(Station $station, Request $request): JsonResponse
+    /**
+     * Crear nueva estación (solo admin)
+     */
+    public function store(Request $request)
     {
-        $type = $request->input('type');
-        $bikes = $station->getAvailableBikesByType($type);
+        try {
+            // Verificar que el usuario sea admin
+            if (!auth()->user()->is_admin) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permisos para realizar esta acción'
+                ], 403);
+            }
 
-        return response()->json([
-            'success' => true,
-            'data' => $bikes->map(function($bike) {
-                return [
-                    'id' => $bike->id,
-                    'code' => $bike->code,
-                    'type' => $bike->type,
-                    'battery_level' => $bike->battery_level,
-                    'battery_status' => $bike->battery_status,
-                    'can_be_rented' => $bike->canBeRented(),
-                ];
-            })
-        ]);
+            // Validación
+            $validator = Validator::make($request->all(), [
+                'nombre' => 'required|string|max:255|unique:estaciones,nombre',
+                'descripcion' => 'nullable|string|max:500',
+                'ubicacion' => 'required|string|max:255',
+                'latitud' => 'required|numeric|between:-90,90',
+                'longitud' => 'required|numeric|between:-180,180',
+                'tipo_estacion' => 'required|in:' . implode(',', array_keys(Estacion::getTiposEstacion())),
+                'capacidad_total' => 'required|integer|min:1|max:100',
+                'estado' => 'required|in:' . implode(',', array_keys(Estacion::getEstados())),
+                'direccion' => 'nullable|string|max:500',
+                'telefono' => 'nullable|string|max:20',
+                'observaciones' => 'nullable|string|max:1000'
+            ], [
+                'nombre.required' => 'El nombre de la estación es obligatorio',
+                'nombre.unique' => 'Ya existe una estación con este nombre',
+                'ubicacion.required' => 'La ubicación es obligatoria',
+                'latitud.required' => 'La latitud es obligatoria',
+                'latitud.between' => 'La latitud debe estar entre -90 y 90',
+                'longitud.required' => 'La longitud es obligatoria',
+                'longitud.between' => 'La longitud debe estar entre -180 y 180',
+                'tipo_estacion.required' => 'El tipo de estación es obligatorio',
+                'tipo_estacion.in' => 'El tipo de estación no es válido',
+                'capacidad_total.required' => 'La capacidad total es obligatoria',
+                'capacidad_total.min' => 'La capacidad debe ser al menos 1',
+                'capacidad_total.max' => 'La capacidad no puede ser mayor a 100',
+                'estado.required' => 'El estado es obligatorio',
+                'estado.in' => 'El estado no es válido'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Datos de validación incorrectos',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Crear la estación
+            DB::beginTransaction();
+
+            $data = $request->all();
+            // Inicializar capacidad disponible igual a capacidad total
+            $data['capacidad_disponible'] = $data['capacidad_total'];
+
+            $estacion = Estacion::create($data);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Estación creada exitosamente',
+                'data' => $estacion
+            ], 201);
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al crear la estación: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
-    public function getTypeOptions(): JsonResponse
+    /**
+     * Mostrar una estación específica
+     */
+    public function show($id)
     {
-        return response()->json([
-            'success' => true,
-            'data' => Station::getTypeOptions()
-        ]);
+        try {
+            $estacion = Estacion::findOrFail($id);
+
+            // Si no es admin y la estación no está activa, no permitir acceso
+            if (!auth()->user()->is_admin && !$estacion->estaActiva()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Estación no disponible'
+                ], 403);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $estacion
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener la estación: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
-    public function getStatistics(): JsonResponse
+    /**
+     * Actualizar estación (solo admin)
+     */
+    public function update(Request $request, $id)
     {
-        $stats = [
-            'total_stations' => Station::active()->count(),
-            'by_type' => [
-                'carga' => Station::active()->ofType('carga')->count(),
-                'descanso' => Station::active()->ofType('descanso')->count(),
-                'seleccion' => Station::active()->ofType('seleccion')->count(),
-            ],
-            'total_capacity' => Station::active()->sum('capacity'),
-            'total_bikes' => Station::active()->withCount('bikes')->get()->sum('bikes_count'),
-            'average_occupancy' => Station::active()->get()->avg('occupancy_percentage'),
-        ];
+        try {
+            // Verificar que el usuario sea admin
+            if (!auth()->user()->is_admin) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permisos para realizar esta acción'
+                ], 403);
+            }
 
-        return response()->json([
-            'success' => true,
-            'data' => $stats
-        ]);
+            $estacion = Estacion::findOrFail($id);
+
+            // Validación
+            $validator = Validator::make($request->all(), [
+                'nombre' => 'required|string|max:255|unique:estaciones,nombre,' . $id,
+                'descripcion' => 'nullable|string|max:500',
+                'ubicacion' => 'required|string|max:255',
+                'latitud' => 'required|numeric|between:-90,90',
+                'longitud' => 'required|numeric|between:-180,180',
+                'tipo_estacion' => 'required|in:' . implode(',', array_keys(Estacion::getTiposEstacion())),
+                'capacidad_total' => 'required|integer|min:1|max:100',
+                'capacidad_disponible' => 'required|integer|min:0',
+                'estado' => 'required|in:' . implode(',', array_keys(Estacion::getEstados())),
+                'direccion' => 'nullable|string|max:500',
+                'telefono' => 'nullable|string|max:20',
+                'observaciones' => 'nullable|string|max:1000'
+            ], [
+                'capacidad_disponible.min' => 'La capacidad disponible no puede ser negativa'
+            ]);
+
+            // Validar que capacidad disponible no sea mayor a capacidad total
+            $validator->after(function ($validator) use ($request) {
+                if ($request->capacidad_disponible > $request->capacidad_total) {
+                    $validator->errors()->add('capacidad_disponible', 'La capacidad disponible no puede ser mayor a la capacidad total');
+                }
+            });
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Datos de validación incorrectos',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            DB::beginTransaction();
+
+            $estacion->update($request->all());
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Estación actualizada exitosamente',
+                'data' => $estacion->fresh()
+            ]);
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar la estación: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Eliminar estación (solo admin)
+     */
+    public function destroy($id)
+    {
+        try {
+            // Verificar que el usuario sea admin
+            if (!auth()->user()->is_admin) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permisos para realizar esta acción'
+                ], 403);
+            }
+
+            $estacion = Estacion::findOrFail($id);
+
+            DB::beginTransaction();
+
+            // Soft delete
+            $estacion->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Estación eliminada exitosamente'
+            ]);
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al eliminar la estación: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtener estaciones para mapa (solo activas)
+     */
+    public function paraMapas()
+    {
+        try {
+            $estaciones = Estacion::activas()
+                ->select('id', 'nombre', 'tipo_estacion', 'latitud', 'longitud', 'capacidad_total', 'capacidad_disponible', 'direccion')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $estaciones
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener las estaciones para el mapa: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtener estadísticas de estaciones (solo admin)
+     */
+    public function estadisticas()
+    {
+        try {
+            // Verificar que el usuario sea admin
+            if (!auth()->user()->is_admin) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permisos para realizar esta acción'
+                ], 403);
+            }
+
+            $stats = [
+                'total_estaciones' => Estacion::count(),
+                'estaciones_activas' => Estacion::where('estado', Estacion::ESTADO_ACTIVA)->count(),
+                'estaciones_inactivas' => Estacion::where('estado', Estacion::ESTADO_INACTIVA)->count(),
+                'estaciones_mantenimiento' => Estacion::where('estado', Estacion::ESTADO_MANTENIMIENTO)->count(),
+                'por_tipo' => [
+                    'carga' => Estacion::where('tipo_estacion', Estacion::TIPO_CARGA)->count(),
+                    'descanso' => Estacion::where('tipo_estacion', Estacion::TIPO_DESCANSO)->count(),
+                    'seleccion' => Estacion::where('tipo_estacion', Estacion::TIPO_SELECCION)->count(),
+                ],
+                'capacidad_total' => Estacion::sum('capacidad_total'),
+                'capacidad_disponible' => Estacion::sum('capacidad_disponible')
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $stats
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener las estadísticas: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

@@ -15,7 +15,7 @@
                     Actualizar
                 </button>
                 <button
-                    v-if="user.role === 'admin'"
+                    v-if="user && user.role === 'admin'"
                     @click="showCreateModal = true"
                     class="btn btn-primary"
                 >
@@ -130,7 +130,7 @@
             </div>
         </div>
 
-        <!-- Bikes Grid/List -->
+        <!-- Bikes List -->
         <div v-if="loading && bikes.length === 0" class="text-center py-12">
             <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p class="text-gray-500">Cargando bicicletas...</p>
@@ -197,13 +197,11 @@
                         </div>
 
                         <!-- Estación -->
-                        <div class="col-span-2">
-                            <div class="text-sm text-gray-900">
-                                {{ bike.station ? bike.station.name : 'Sin asignar' }}
-                            </div>
-                            <div class="text-xs text-gray-500">
-                                {{ bike.station ? bike.station.code : '' }}
-                            </div>
+                        <div class="text-sm text-gray-900">
+                            {{ bike.estacion ? bike.estacion.nombre : 'Sin asignar' }}
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            {{ bike.estacion ? bike.estacion.codigo || bike.estacion.id : '' }}
                         </div>
 
                         <!-- Batería -->
@@ -230,14 +228,14 @@
                                     Ver
                                 </button>
                                 <button
-                                    v-if="bike.can_be_rented && user.role !== 'admin'"
+                                    v-if="bike.can_be_rented && (!user || user.role !== 'admin')"
                                     @click="rentBike(bike)"
                                     class="text-green-600 hover:text-green-900 text-sm"
                                 >
                                     Alquilar
                                 </button>
                                 <button
-                                    v-if="user.role === 'admin'"
+                                    v-if="user && user.role === 'admin'"
                                     @click="editBike(bike)"
                                     class="text-indigo-600 hover:text-indigo-900 text-sm"
                                 >
@@ -343,18 +341,17 @@
 
                         <div>
                             <h4 class="font-medium text-gray-900 mb-3">Ubicación</h4>
-                            <div v-if="selectedBike.station" class="space-y-2 text-sm">
+                            <div v-if="selectedBike.estacion" class="space-y-2 text-sm">
                                 <div class="flex justify-between">
                                     <span class="text-gray-500">Estación:</span>
-                                    <span class="font-medium">{{ selectedBike.station.name }}</span>
-                                </div>
+                                    <span class="font-medium">{{ selectedBike.estacion.nombre }}</span>                                </div>
                                 <div class="flex justify-between">
                                     <span class="text-gray-500">Código:</span>
-                                    <span class="font-medium">{{ selectedBike.station.code }}</span>
+                                    <span class="font-medium">{{ selectedBike.estacion.code }}</span>
                                 </div>
                                 <div class="flex justify-between">
                                     <span class="text-gray-500">Tipo:</span>
-                                    <span class="font-medium">{{ getStationType(selectedBike.station.type) }}</span>
+                                    <span class="font-medium">{{ getStationType(selectedBike.estacion.type) }}</span>
                                 </div>
                             </div>
                             <div v-else class="text-sm text-gray-500">
@@ -391,21 +388,21 @@
                             Cerrar
                         </button>
                         <button
-                            v-if="selectedBike.can_be_rented && user.role !== 'admin'"
+                            v-if="selectedBike.can_be_rented && (!user || user.role !== 'admin')"
                             @click="rentBike(selectedBike)"
                             class="btn btn-primary"
                         >
                             Alquilar
                         </button>
                         <button
-                            v-if="user.role !== 'admin'"
+                            v-if="!user || user.role !== 'admin'"
                             @click="reportDamage(selectedBike)"
                             class="btn btn-outline"
                         >
                             Reportar Daño
                         </button>
                         <button
-                            v-if="user.role === 'admin'"
+                            v-if="user && user.role === 'admin'"
                             @click="editBike(selectedBike)"
                             class="btn btn-primary"
                         >
@@ -425,7 +422,7 @@ export default {
     props: {
         user: {
             type: Object,
-            required: true
+            default: () => null
         }
     },
 
@@ -488,11 +485,11 @@ export default {
                 });
 
                 if (response.data.success) {
-                    this.bikes = response.data.data.data || response.data.data;
+                    this.bikes = response.data.data;
                 }
             } catch (error) {
                 console.error('Error loading bikes:', error);
-                this.$emit('show-error', 'Error al cargar las bicicletas');
+                alert('Error al cargar las bicicletas');
             } finally {
                 this.loading = false;
             }
@@ -529,11 +526,14 @@ export default {
         },
 
         async rentBike(bike) {
+            if (!bike.estacion) {
+                alert('Esta bicicleta no tiene una estación asignada');
+                return;
+            }
+
             try {
-                // Aquí necesitarías implementar la lógica de selección de estación
-                // Por ahora uso una estación por defecto
-                const response = await axios.post(`/bikes/${bike.id}/rent`, {
-                    station_id: bike.station_id // O permitir al usuario seleccionar
+                const response = await axios.post(`/api/bikes/${bike.id}/rent`, {
+                    estacion_id: bike.estacion.id
                 }, {
                     headers: {
                         'Accept': 'application/json',
@@ -542,26 +542,23 @@ export default {
                 });
 
                 if (response.data.success) {
-                    this.$emit('bike-updated', response.data.data);
                     this.closeModal();
                     await this.refreshBikes();
                     alert('Bicicleta alquilada exitosamente');
                 }
             } catch (error) {
                 console.error('Error renting bike:', error);
-                this.$emit('show-error', error.response?.data?.message || 'Error al alquilar la bicicleta');
+                alert(error.response?.data?.message || 'Error al alquilar la bicicleta');
             }
         },
 
         reportDamage(bike) {
-            // Emitir evento para abrir modal de reporte de daños
-            this.$emit('report-damage', bike);
+            alert('Funcionalidad de reportar daño será implementada próximamente');
             this.closeModal();
         },
 
         editBike(bike) {
-            // Emitir evento para editar bicicleta
-            this.$emit('edit-bike', bike);
+            alert('Funcionalidad de editar bicicleta será implementada próximamente');
             this.closeModal();
         },
 

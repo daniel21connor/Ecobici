@@ -450,15 +450,7 @@
 
                 <!-- Bikes Section -->
                 <div v-else-if="activeSection === 'bikes'" class="section">
-                    <div class="card">
-                        <div class="card-content">
-                            <h2 class="section-title">Mis Bicicletas</h2>
-                            <div class="coming-soon">
-                                <p>🚧 Esta sección está en desarrollo</p>
-                                <p class="text-sm">Pronto estará disponible</p>
-                            </div>
-                        </div>
-                    </div>
+                    <bikes-list :user="user" />
                 </div>
 
                 <!-- Reports Section -->
@@ -515,25 +507,15 @@
 // Importar el componente de membresías y estaciones
 import MembershipPayment from './MembershipPayment.vue';
 import Estacion from './Estacion.vue';
-<<<<<<< HEAD
-import BikesList from './BikesList.vue';          // Nuevo componente
-import UsageHistory from './UsageHistory.vue';    // Nuevo componente
-import DamageReports from './DamageReports.vue';  // Nuevo componente
-=======
 import UserManagement from "@/components/UserManagement.vue";
->>>>>>> origin/connor-dev
+import BikesList from "./BikesList.vue";
 
 export default {
     components: {
         MembershipPayment,
         Estacion,
-<<<<<<< HEAD
         BikesList,
-        UsageHistory,
-        DamageReports,
-=======
-        UserManagement,
->>>>>>> origin/connor-dev
+        UserManagement
     },
 
     data() {
@@ -552,6 +534,7 @@ export default {
         isAdmin() {
             return this.user && this.user.role === 'admin';
         },
+
 
         canAccessReports() {
             return this.hasActiveMembership || this.isAdmin;
@@ -690,11 +673,7 @@ export default {
             const titles = {
                 'dashboard': 'Dashboard',
                 'memberships': 'Membresías',
-<<<<<<< HEAD
-                'stations': 'Estacion',
-=======
                 'stations': 'Estaciones',
->>>>>>> origin/connor-dev
                 'profile': 'Mi Perfil',
                 'bikes': 'Mis Bicicletas',
                 'reports': 'Reportes',

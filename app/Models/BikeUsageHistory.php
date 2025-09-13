@@ -42,12 +42,12 @@ class BikeUsageHistory extends Model
 
     public function startStation()
     {
-        return $this->belongsTo(Station::class, 'start_station_id');
+        return $this->belongsTo(Estacion::class, 'start_station_id');
     }
 
     public function endStation()
     {
-        return $this->belongsTo(Station::class, 'end_station_id');
+        return $this->belongsTo(Estacion::class, 'end_station_id');
     }
 
     // Scopes
