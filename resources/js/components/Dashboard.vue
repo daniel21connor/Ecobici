@@ -97,6 +97,18 @@
                             </a>
                         </li>
 
+                        <!-- Ranking de Usuarios -->
+                        <li>
+                            <a
+                                @click="setActiveSection('ranking')"
+                                class="nav-item"
+                                :class="{ 'nav-active': activeSection === 'ranking' }"
+                            >
+                                <span class="nav-icon">🏆</span>
+                                <span v-if="sidebarOpen" class="nav-text">Ranking</span>
+                            </a>
+                        </li>
+
                         <!-- Reportes (solo si tiene acceso) -->
                         <li v-if="canAccessReports">
                             <a
@@ -266,6 +278,14 @@
                                             <button @click="setActiveSection('reports')" class="stat-btn">Ver Reportes</button>
                                         </div>
                                     </div>
+                                    <div class="stat-card stat-gold">
+                                        <div class="stat-icon">🏆</div>
+                                        <div class="stat-content">
+                                            <h3>Ranking</h3>
+                                            <p>Ver ranking de usuarios</p>
+                                            <button @click="setActiveSection('ranking')" class="stat-btn">Ver Ranking</button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -406,6 +426,18 @@
                                         {{ hasActiveMembership ? 'Gestionar' : 'Activar' }}
                                     </button>
                                 </div>
+
+                                <div class="service-card" :class="{ disabled: !hasActiveMembership && !isAdmin }">
+                                    <div class="service-icon">🏆</div>
+                                    <h3>Ranking</h3>
+                                    <p>Ver tabla de posiciones</p>
+                                    <button @click="setActiveSection('ranking')"
+                                            class="service-btn"
+                                            :disabled="!hasActiveMembership && !isAdmin">
+                                        Ver Ranking
+                                    </button>
+                                    <span v-if="!hasActiveMembership && !isAdmin" class="premium-badge">Premium</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -480,7 +512,6 @@
                 </div>
 
                 <!-- Bikes Section -->
-                <!-- Bikes Section -->
                 <div v-else-if="activeSection === 'bicicletas'" class="section">
                     <div class="bikes-container">
                         <bicicletas ref="bicicletasComponent" />
@@ -498,6 +529,13 @@
                 <div v-else-if="activeSection === 'users'" class="section">
                     <div class="user-management-container">
                         <user-management ref="userManagementComponent" />
+                    </div>
+                </div>
+
+                <!-- Ranking Section -->
+                <div v-else-if="activeSection === 'ranking'" class="section">
+                    <div class="ranking-container">
+                        <user-ranking ref="userRankingComponent" />
                     </div>
                 </div>
 
@@ -538,6 +576,7 @@ import UserManagement from "@/components/UserManagement.vue";
 import Routes from "@/components/Routes.vue";
 import bicicletas from "@/components/bicicletas.vue";
 import DamageReports from '@/components/DamageReports.vue';
+import userRanking from "@/components/UserRanking.vue";
 
 export default {
     components: {
@@ -547,6 +586,7 @@ export default {
         Routes,
         bicicletas,
         DamageReports,
+        userRanking,
     },
 
     data() {
@@ -708,6 +748,7 @@ export default {
                 'routes': 'Mis Rutas',
                 'bicicletas': 'Mis Bicicletas',
                 'DamageReports': 'Reportes',
+                'userRanking': 'Ranking',
                 'users': 'Gestión de Usuarios',
                 'settings': 'Configuración'
             };

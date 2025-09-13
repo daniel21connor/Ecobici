@@ -42,6 +42,8 @@ app.component('bicicletas', Bicicletas);
 import damageReports from "@/components/DamageReports.vue";
 import DamageReports from "@/components/DamageReports.vue";
 app.component('damageReports', DamageReports);
+import UserRanking from "@/components/UserRanking.vue";
+app.component('userRanking', UserRanking);
 
 
 /**
