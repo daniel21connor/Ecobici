@@ -28,7 +28,14 @@ import DashboardComponent from './components/Dashboard.vue';
 app.component('dashboard', DashboardComponent);
 import MembershipPayment from "@/components/MembershipPayment.vue";
 app.component('membership-payment', MembershipPayment);
-
+import Estacion from "@/components/Estacion.vue";
+app.component('est', Estacion)
+import BikesList from "@/components/BikesList.vue";
+app.component('BikeL', BikesList)
+import UsageHistory from "@/components/UsageHistory.vue";
+app.component('Usage', UsageHistory)
+import DamageReports from "@/components/DamageReports.vue";
+app.component('Damage', DamageReports)
 
 /**
  * The following block of code may be used to automatically register your

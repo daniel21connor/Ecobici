@@ -397,7 +397,6 @@ export default {
         validateCaptcha() {
             return parseInt(this.captchaAnswer) === this.correctAnswer;
         },
-
         async login() {
             if (this.isBlocked) {
                 return;
@@ -437,12 +436,9 @@ export default {
                     localStorage.removeItem('login_attempts');
                     localStorage.removeItem('last_failed_attempt');
 
-                    // Redirigir según el rol
-                    if (result.role === 'admin') {
-                        window.location.href = '/admin/dashboard';
-                    } else {
-                        window.location.href = '/dashboard';
-                    }
+                    // Todos los usuarios van al mismo dashboard
+                    // La diferenciación de roles se maneja en el dashboard
+                    window.location.href = '/dashboard';
                 } else {
                     // Login fallido
                     this.error = result.message || 'Credenciales incorrectas';

@@ -61,19 +61,19 @@
                             </a>
                         </li>
 
-                        <!-- Bicicletas (futuro módulo) -->
+                        <!-- Estaciones -->
                         <li>
                             <a
                                 @click="setActiveSection('stations')"
                                 class="nav-item"
                                 :class="{ 'nav-active': activeSection === 'stations' }"
                             >
-                                <span class="nav-icon">🚲</span>
-                                <span v-if="sidebarOpen" class="nav-text">Mis </span>
+                                <span class="nav-icon">🏢</span>
+                                <span v-if="sidebarOpen" class="nav-text">Estaciones</span>
                             </a>
                         </li>
 
-                        <!-- Bicicletas (futuro módulo) -->
+                        <!-- Bicicletas -->
                         <li>
                             <a
                                 @click="setActiveSection('bikes')"
@@ -98,13 +98,13 @@
                         </li>
 
                         <!-- Separador para admin -->
-                        <li v-if="user.role === 'admin'" class="nav-divider">
+                        <li v-if="isAdmin" class="nav-divider">
                             <hr v-if="sidebarOpen">
                             <span v-if="sidebarOpen" class="divider-text">Administración</span>
                         </li>
 
                         <!-- Gestión de Usuarios (solo admin) -->
-                        <li v-if="user.role === 'admin'">
+                        <li v-if="isAdmin">
                             <a
                                 @click="setActiveSection('users')"
                                 class="nav-item"
@@ -116,7 +116,7 @@
                         </li>
 
                         <!-- Configuración (solo admin) -->
-                        <li v-if="user.role === 'admin'">
+                        <li v-if="isAdmin">
                             <a
                                 @click="setActiveSection('settings')"
                                 class="nav-item"
@@ -168,11 +168,15 @@
                                 {{ currentMembership.days_remaining }} días restantes
                             </span>
                         </div>
+                        <div v-if="isAdmin" class="admin-badge">
+                            <span class="admin-icon">⭐</span>
+                            <span class="admin-text">Administrador</span>
+                        </div>
                     </div>
                     <div class="header-right">
                         <div class="header-actions">
                             <!-- Notificación de membresía -->
-                            <div v-if="!hasActiveMembership" class="membership-alert">
+                            <div v-if="!hasActiveMembership && !isAdmin" class="membership-alert">
                                 <span class="alert-icon">⚠️</span>
                                 <span class="alert-text">Sin membresía activa</span>
                                 <button @click="setActiveSection('memberships')" class="alert-btn">
@@ -180,9 +184,14 @@
                                 </button>
                             </div>
                             <!-- Estado de membresía activa -->
-                            <div v-else class="membership-active">
+                            <div v-else-if="hasActiveMembership" class="membership-active">
                                 <span class="active-icon">✅</span>
                                 <span class="active-text">Membresía Activa</span>
+                            </div>
+                            <!-- Estado de admin -->
+                            <div v-else-if="isAdmin" class="admin-active">
+                                <span class="admin-active-icon">🛡️</span>
+                                <span class="admin-active-text">Acceso Total</span>
                             </div>
                         </div>
                     </div>
@@ -193,137 +202,164 @@
             <main class="content">
                 <!-- Dashboard Section -->
                 <div v-if="activeSection === 'dashboard'" class="section">
-                    <!-- Membership Status Card -->
-                    <div class="card mb-6">
-                        <div class="card-content">
-                            <div v-if="hasActiveMembership" class="membership-welcome">
-                                <div class="welcome-header">
-                                    <div class="welcome-icon">
-                                        <span class="plan-emoji">{{ getPlanEmoji(currentMembership.plan_type) }}</span>
-                                    </div>
-                                    <div class="welcome-content">
-                                        <h2 class="welcome-title">
-                                            ¡Bienvenido a tu plan {{ currentMembership.plan_info.name }}!
-                                        </h2>
-                                        <p class="welcome-subtitle">
-                                            Tu membresía está activa hasta el {{ formatDate(currentMembership.end_date) }}
-                                        </p>
-                                    </div>
-                                    <div class="welcome-badge">
-                                        <span class="days-remaining">{{ currentMembership.days_remaining }}</span>
-                                        <span class="days-text">días</span>
-                                    </div>
-                                </div>
-
-                                <div class="membership-features">
-                                    <h3 class="features-title">Características de tu plan:</h3>
-                                    <div class="features-grid">
-                                        <div v-for="(feature, index) in currentMembership.features"
-                                             :key="index"
-                                             class="feature-item">
-                                            <span class="feature-icon">✓</span>
-                                            <span class="feature-text">{{ feature }}</span>
+                    <!-- Admin Dashboard -->
+                    <div v-if="isAdmin" class="admin-dashboard">
+                        <!-- Welcome Card para Admin -->
+                        <div class="card mb-6">
+                            <div class="card-content">
+                                <div class="admin-welcome">
+                                    <div class="admin-welcome-header">
+                                        <div class="admin-welcome-icon">
+                                            <span class="admin-emoji">👑</span>
+                                        </div>
+                                        <div class="admin-welcome-content">
+                                            <h2 class="admin-welcome-title">
+                                                Bienvenido, Administrador {{ user.name }}
+                                            </h2>
+                                            <p class="admin-welcome-subtitle">
+                                                Panel de control administrativo - Acceso completo al sistema
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
-
-                                <div class="membership-actions">
-                                    <button @click="setActiveSection('memberships')" class="action-btn primary">
-                                        Gestionar Membresía
-                                    </button>
-                                    <button @click="setActiveSection('profile')" class="action-btn secondary">
-                                        Ver Perfil
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Sin membresía -->
-                            <div v-else class="no-membership">
-                                <div class="no-membership-icon">🚫</div>
-                                <h2 class="no-membership-title">No tienes una membresía activa</h2>
-                                <p class="no-membership-text">
-                                    Activa una membresía para acceder a todas las funcionalidades de la plataforma
-                                </p>
-                                <button @click="setActiveSection('memberships')" class="activation-btn">
-                                    Activar Membresía
-                                </button>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Admin Section -->
-                    <div v-if="user.role === 'admin'" class="card mb-6">
-                        <div class="card-content">
-                            <h2 class="section-title">Panel de Administrador</h2>
-                            <div class="stats-grid">
-                                <div class="stat-card stat-blue">
-                                    <div class="stat-icon">👥</div>
-                                    <div class="stat-content">
-                                        <h3>Gestión de Usuarios</h3>
-                                        <p>Administrar usuarios del sistema</p>
-                                        <button @click="setActiveSection('users')" class="stat-btn">Ver Usuarios</button>
+                        <!-- Stats Cards para Admin -->
+                        <div class="card mb-6">
+                            <div class="card-content">
+                                <h2 class="section-title">Panel de Administrador</h2>
+                                <div class="stats-grid">
+                                    <div class="stat-card stat-blue">
+                                        <div class="stat-icon">👥</div>
+                                        <div class="stat-content">
+                                            <h3>Gestión de Usuarios</h3>
+                                            <p>Administrar usuarios del sistema</p>
+                                            <button @click="setActiveSection('users')" class="stat-btn">Ver Usuarios</button>
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="stat-card stat-green">
-                                    <div class="stat-icon">⚙️</div>
-                                    <div class="stat-content">
-                                        <h3>Configuración</h3>
-                                        <p>Configurar el sistema</p>
-                                        <button @click="setActiveSection('settings')" class="stat-btn">Configurar</button>
+                                    <div class="stat-card stat-green">
+                                        <div class="stat-icon">⚙️</div>
+                                        <div class="stat-content">
+                                            <h3>Configuración</h3>
+                                            <p>Configurar el sistema</p>
+                                            <button @click="setActiveSection('settings')" class="stat-btn">Configurar</button>
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="stat-card stat-purple">
-                                    <div class="stat-icon">📈</div>
-                                    <div class="stat-content">
-                                        <h3>Reportes</h3>
-                                        <p>Ver reportes del sistema</p>
-                                        <button @click="setActiveSection('reports')" class="stat-btn">Ver Reportes</button>
+                                    <div class="stat-card stat-purple">
+                                        <div class="stat-icon">📈</div>
+                                        <div class="stat-content">
+                                            <h3>Reportes</h3>
+                                            <p>Ver reportes del sistema</p>
+                                            <button @click="setActiveSection('reports')" class="stat-btn">Ver Reportes</button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- User Section -->
+                    <!-- User Dashboard -->
+                    <div v-else>
+                        <!-- Membership Status Card -->
+                        <div class="card mb-6">
+                            <div class="card-content">
+                                <div v-if="hasActiveMembership" class="membership-welcome">
+                                    <div class="welcome-header">
+                                        <div class="welcome-icon">
+                                            <span class="plan-emoji">{{ getPlanEmoji(currentMembership.plan_type) }}</span>
+                                        </div>
+                                        <div class="welcome-content">
+                                            <h2 class="welcome-title">
+                                                ¡Bienvenido a tu plan {{ currentMembership.plan_info.name }}!
+                                            </h2>
+                                            <p class="welcome-subtitle">
+                                                Tu membresía está activa hasta el {{ formatDate(currentMembership.end_date) }}
+                                            </p>
+                                        </div>
+                                        <div class="welcome-badge">
+                                            <span class="days-remaining">{{ currentMembership.days_remaining }}</span>
+                                            <span class="days-text">días</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="membership-features">
+                                        <h3 class="features-title">Características de tu plan:</h3>
+                                        <div class="features-grid">
+                                            <div v-for="(feature, index) in currentMembership.features"
+                                                 :key="index"
+                                                 class="feature-item">
+                                                <span class="feature-icon">✓</span>
+                                                <span class="feature-text">{{ feature }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="membership-actions">
+                                        <button @click="setActiveSection('memberships')" class="action-btn primary">
+                                            Gestionar Membresía
+                                        </button>
+                                        <button @click="setActiveSection('profile')" class="action-btn secondary">
+                                            Ver Perfil
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Sin membresía -->
+                                <div v-else class="no-membership">
+                                    <div class="no-membership-icon">🚫</div>
+                                    <h2 class="no-membership-title">No tienes una membresía activa</h2>
+                                    <p class="no-membership-text">
+                                        Activa una membresía para acceder a todas las funcionalidades de la plataforma
+                                    </p>
+                                    <button @click="setActiveSection('memberships')" class="activation-btn">
+                                        Activar Membresía
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Services Section para todos -->
                     <div class="card">
                         <div class="card-content">
                             <h2 class="section-title">
-                                {{ user.role === 'admin' ? 'Acceso Rápido' : 'Mis Servicios' }}
+                                {{ isAdmin ? 'Acceso Rápido' : 'Mis Servicios' }}
                             </h2>
                             <div class="services-grid">
-                                <div class="service-card" :class="{ disabled: !hasActiveMembership && user.role !== 'admin' }">
+                                <div class="service-card" :class="{ disabled: !hasActiveMembership && !isAdmin }">
                                     <div class="service-icon">👤</div>
                                     <h3>Mi Perfil</h3>
                                     <p>Ver y editar información personal</p>
                                     <button @click="setActiveSection('profile')"
                                             class="service-btn"
-                                            :disabled="!hasActiveMembership && user.role !== 'admin'">
+                                            :disabled="!hasActiveMembership && !isAdmin">
                                         Ver Perfil
                                     </button>
                                 </div>
 
-                                <div class="service-card" :class="{ disabled: !hasActiveMembership && user.role !== 'admin' }">
+                                <div class="service-card" :class="{ disabled: !hasActiveMembership && !isAdmin }">
+                                    <div class="service-icon">🏢</div>
+                                    <h3>Estaciones</h3>
+                                    <p>Gestionar estaciones</p>
+                                    <button @click="setActiveSection('stations')"
+                                            class="service-btn"
+                                            :disabled="!hasActiveMembership && !isAdmin">
+                                        Ver Estaciones
+                                    </button>
+                                    <span v-if="!hasActiveMembership && !isAdmin" class="premium-badge">Premium</span>
+                                </div>
+
+                                <div class="service-card" :class="{ disabled: !hasActiveMembership && !isAdmin }">
                                     <div class="service-icon">🚲</div>
                                     <h3>Mis Bicicletas</h3>
                                     <p>Gestionar mis bicicletas</p>
                                     <button @click="setActiveSection('bikes')"
                                             class="service-btn"
-                                            :disabled="!hasActiveMembership && user.role !== 'admin'">
+                                            :disabled="!hasActiveMembership && !isAdmin">
                                         Ver Bicicletas
                                     </button>
-                                    <span v-if="!hasActiveMembership && user.role !== 'admin'" class="premium-badge">Premium</span>
-                                </div>
-
-                                <div class="service-card" :class="{ disabled: !hasActiveMembership && user.role !== 'user' }">
-                                    <div class="service-icon">🚲</div>
-                                    <h3>Mis </h3>
-                                    <p>Gestionar mis bicicletas</p>
-                                    <button @click="setActiveSection('stations')"
-                                            class="service-btn"
-                                            :disabled="!hasActiveMembership && user.role !== 'admin'">
-                                        Ver Bicicletas
-                                    </button>
-                                    <span v-if="!hasActiveMembership && user.role !== 'admin'" class="premium-badge">Premium</span>
+                                    <span v-if="!hasActiveMembership && !isAdmin" class="premium-badge">Premium</span>
                                 </div>
 
                                 <div class="service-card" :class="{ disabled: !canAccessReports }">
@@ -362,6 +398,13 @@
                     </div>
                 </div>
 
+                <!-- Stations Section -->
+                <div v-else-if="activeSection === 'stations'" class="section">
+                    <div class="station-container">
+                        <estacion ref="stationComponent" />
+                    </div>
+                </div>
+
                 <!-- Profile Section -->
                 <div v-else-if="activeSection === 'profile'" class="section">
                     <div class="card">
@@ -386,13 +429,19 @@
                                 </div>
                                 <div class="profile-field">
                                     <label>Rol:</label>
-                                    <span>{{ getRoleText() }}</span>
+                                    <span class="role-badge" :class="{'role-admin': isAdmin, 'role-user': !isAdmin}">
+                                        {{ getRoleText() }}
+                                    </span>
                                 </div>
                                 <div v-if="currentMembership" class="profile-field">
                                     <label>Membresía:</label>
                                     <span class="membership-badge" :class="'badge-' + currentMembership.plan_type">
                                         {{ currentMembership.plan_info.name }}
                                     </span>
+                                </div>
+                                <div v-if="isAdmin" class="profile-field">
+                                    <label>Permisos:</label>
+                                    <span class="permissions-text">Acceso total al sistema</span>
                                 </div>
                             </div>
                         </div>
@@ -417,14 +466,20 @@
 </template>
 
 <script>
-// Importar el componente de membresías
+// Importar el componente de membresías y estaciones
 import MembershipPayment from './MembershipPayment.vue';
-import Estaciones from './Estacion.vue';
+import Estacion from './Estacion.vue';
+import BikesList from './BikesList.vue';          // Nuevo componente
+import UsageHistory from './UsageHistory.vue';    // Nuevo componente
+import DamageReports from './DamageReports.vue';  // Nuevo componente
 
 export default {
     components: {
         MembershipPayment,
-        Estaciones,
+        Estacion,
+        BikesList,
+        UsageHistory,
+        DamageReports,
     },
 
     data() {
@@ -434,50 +489,105 @@ export default {
             sidebarOpen: true,
             currentMembership: null,
             hasActiveMembership: false,
-            loading: false
+            loading: false,
+            userLoaded: false
         }
     },
 
     computed: {
+        isAdmin() {
+            return this.user && this.user.role === 'admin';
+        },
+
         canAccessReports() {
-            // Verificar si puede acceder a reportes según su membresía
-            return this.hasActiveMembership || this.user.role === 'admin';
+            return this.hasActiveMembership || this.isAdmin;
         }
     },
 
     async mounted() {
-        await this.getCurrentUser();
-        await this.loadCurrentMembership();
+        await this.initializeUser();
     },
 
     methods: {
-        async getCurrentUser() {
+        async initializeUser() {
             try {
-                const response = await axios.get('/api/user', {
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-                    }
-                });
-
-                if (response.data.success) {
-                    this.user = response.data.user;
-                    console.log('Usuario cargado:', this.user);
-                } else {
-                    console.error('Error en respuesta:', response.data);
-                    throw new Error('Error al obtener usuario');
+                await this.getCurrentUser();
+                if (this.userLoaded && !this.isAdmin) {
+                    await this.loadCurrentMembership();
                 }
             } catch (error) {
-                console.error('Error al obtener usuario:', error);
-                // Si hay error de autenticación, redirigir al login
-                if (error.response && error.response.status === 401) {
-                    window.location.href = '/login';
-                }
+                console.error('Error inicializando usuario:', error);
             }
         },
 
+        async getCurrentUser() {
+            try {
+                // Intentar diferentes endpoints
+                let response;
+
+                try {
+                    response = await axios.get('/user', {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                        }
+                    });
+                } catch (firstError) {
+                    console.log('Primer endpoint falló, probando alternativo...');
+                    response = await axios.get('/user', {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                        }
+                    });
+                }
+
+                console.log('Respuesta del usuario:', response.data);
+
+                // Manejar diferentes formatos de respuesta
+                if (response.data.success && response.data.user) {
+                    this.user = response.data.user;
+                } else if (response.data.user) {
+                    this.user = response.data.user;
+                } else if (response.data.name) {
+                    this.user = response.data;
+                } else {
+                    throw new Error('Formato de respuesta inesperado');
+                }
+
+                this.userLoaded = true;
+                console.log('Usuario cargado exitosamente:', this.user);
+                console.log('Es admin:', this.isAdmin);
+
+            } catch (error) {
+                console.error('Error al obtener usuario:', error);
+
+                // Si hay error de autenticación, redirigir al login
+                if (error.response && [401, 403].includes(error.response.status)) {
+                    console.log('Redirigiendo al login por error de autenticación');
+                    window.location.href = '/login';
+                    return;
+                }
+
+                // Si no es error de auth, mostrar error pero no redirigir
+                console.error('Error no crítico obteniendo usuario, continuando...');
+
+                // Establecer usuario por defecto para evitar errores
+                this.user = {
+                    name: 'Usuario',
+                    email: 'No disponible',
+                    role: 'user'
+                };
+                this.userLoaded = true;
+            }
+        },
 
         async loadCurrentMembership() {
+            if (this.isAdmin) {
+                console.log('Usuario admin, saltando carga de membresía');
+                return;
+            }
+
             this.loading = true;
             try {
                 const response = await axios.get('/api/memberships/current', {
@@ -491,7 +601,7 @@ export default {
 
                 if (response.data.success && response.data.membership) {
                     this.currentMembership = response.data.membership;
-                    this.hasActiveMembership = response.data.membership.is_active;
+                    this.hasActiveMembership = response.data.membership.is_active || false;
                     console.log('Membresía cargada:', this.currentMembership);
                 } else {
                     this.currentMembership = null;
@@ -502,40 +612,14 @@ export default {
                 console.error('Error cargando membresía:', error);
                 this.hasActiveMembership = false;
                 this.currentMembership = null;
-
-                // Si es un error de red o servidor, mostrar mensaje al usuario
-                if (error.response && error.response.status >= 500) {
-                    console.error('Error del servidor al cargar membresía');
-                }
             } finally {
                 this.loading = false;
             }
         },
 
-        // Nuevo método para verificar acceso a funcionalidades
-        async checkAccess(feature) {
-            try {
-                const response = await axios.post('/api/memberships/check-access', {
-                    feature: feature
-                }, {
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-                    }
-                });
-
-                return response.data.can_access;
-            } catch (error) {
-                console.error('Error verificando acceso:', error);
-                return false;
-            }
-        },
-        // Método llamado cuando se actualiza la membresía
         async onMembershipUpdated(membershipData) {
             console.log('Membresía actualizada:', membershipData);
-            // Recargar la membresía actual
             await this.loadCurrentMembership();
-            // Volver al dashboard para mostrar el nuevo estado
             this.setActiveSection('dashboard');
         },
 
@@ -545,13 +629,14 @@ export default {
 
         setActiveSection(section) {
             this.activeSection = section;
+            console.log('Cambiando a sección:', section);
         },
 
         getPageTitle() {
             const titles = {
                 'dashboard': 'Dashboard',
                 'memberships': 'Membresías',
-                'station': 'Estaciones',
+                'stations': 'Estacion',
                 'profile': 'Mi Perfil',
                 'bikes': 'Mis Bicicletas',
                 'reports': 'Reportes',
@@ -562,15 +647,25 @@ export default {
         },
 
         getUserInitials() {
-            if (!this.user.name) return 'U';
-            const names = this.user.name.split(' ');
-            return names.length > 1 ?
-                names[0][0] + names[1][0] :
-                names[0][0] + (this.user.apellidos ? this.user.apellidos[0] : '');
+            if (!this.user || !this.user.name) return 'U';
+
+            const name = this.user.name.toString();
+            const names = name.split(' ');
+
+            if (names.length > 1) {
+                return names[0][0].toUpperCase() + names[1][0].toUpperCase();
+            }
+
+            const firstChar = names[0][0] ? names[0][0].toUpperCase() : 'U';
+            const secondChar = this.user.apellidos && this.user.apellidos[0]
+                ? this.user.apellidos[0].toUpperCase()
+                : (names[0][1] ? names[0][1].toUpperCase() : '');
+
+            return firstChar + secondChar;
         },
 
         getRoleText() {
-            return this.user.role === 'admin' ? 'Administrador' : 'Usuario';
+            return this.isAdmin ? 'Administrador' : 'Usuario';
         },
 
         getPlanEmoji(planType) {
@@ -583,20 +678,30 @@ export default {
         },
 
         formatDate(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('es-GT', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('es-GT', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            } catch (error) {
+                return dateString;
+            }
         },
 
         async logout() {
             try {
-                await axios.post('/logout');
+                await axios.post('/logout', {}, {
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    }
+                });
                 window.location.href = '/login';
             } catch (error) {
                 console.error('Error al cerrar sesión:', error);
+                // Forzar redirección incluso si hay error
+                window.location.href = '/login';
             }
         }
     }

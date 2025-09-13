@@ -44,7 +44,7 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // Para APIs que se llaman desde el frontend web (con sesiones)
-Route::middleware(['web', 'auth'])->prefix('api')->group(function () {
+Route::middleware(['auth'])->prefix('api')->group(function () {
 
     // Rutas de membresías
     Route::prefix('memberships')->group(function () {
@@ -52,7 +52,20 @@ Route::middleware(['web', 'auth'])->prefix('api')->group(function () {
         Route::get('/user', [MembershipController::class, 'getUserMemberships']);
         Route::post('/check-access', [MembershipController::class, 'checkAccess']);
     });
+    // Agregar rutas de bicicletas para web
+    Route::prefix('bikes')->group(function () {
+        Route::get('/', [BikeController::class, 'index']);
+        Route::get('/types', [BikeController::class, 'getTypeOptions']);
+        Route::get('/statuses', [BikeController::class, 'getStatusOptions']);
+        Route::get('/statistics', [BikeController::class, 'getStatistics']);
+        Route::get('/{bike}', [BikeController::class, 'show']);
 
+
+    });
+    // Rutas de estaciones para web
+    Route::prefix('stations')->group(function () {
+        Route::get('/', [StationController::class, 'index']);
+    });
     // Ruta para obtener el usuario autenticado
     Route::get('/user', function (Request $request) {
         return response()->json([
@@ -68,7 +81,7 @@ Route::middleware(['web', 'auth'])->prefix('api')->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth')->group(function () {
 
     // ===============================
     // MÓDULO 3 - ESTACIONES Y BICICLETAS
@@ -98,6 +111,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/statistics', [BikeController::class, 'getStatistics']);
         Route::get('/{bike}', [BikeController::class, 'show']);
 
+        // Rutas solo para administradores (agregar esta sección)
+        Route::middleware('admin')->group(function () {
+            Route::post('/', [BikeController::class, 'store']);
+            Route::put('/{bike}', [BikeController::class, 'update']);
+            Route::delete('/{bike}', [BikeController::class, 'destroy']);
+        });
         // Acciones de usuario
         Route::post('/{bike}/rent', [BikeController::class, 'rent']); // RF-06
         Route::post('/{bike}/return', [BikeController::class, 'returnBike']);
@@ -126,10 +145,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{usage}/complete', [BikeUsageHistoryController::class, 'complete']);
         Route::post('/{usage}/cancel', [BikeUsageHistoryController::class, 'cancel']);
 
-        // Solo para administradores
-        Route::middleware('admin')->group(function () {
-            Route::get('/general-stats', [BikeUsageHistoryController::class, 'getGeneralStats']);
-        });
+
     });
 
     // Reportes de daño - RF-08
