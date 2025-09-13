@@ -76,12 +76,24 @@
                         <!-- Bicicletas -->
                         <li>
                             <a
-                                @click="setActiveSection('bikes')"
+                                @click="setActiveSection('bicicletas')"
                                 class="nav-item"
-                                :class="{ 'nav-active': activeSection === 'bikes' }"
+                                :class="{ 'nav-active': activeSection === 'bicicletas' }"
                             >
                                 <span class="nav-icon">🚲</span>
                                 <span v-if="sidebarOpen" class="nav-text">Mis Bicicletas</span>
+                            </a>
+                        </li>
+
+                        <!-- Rutas -->
+                        <li>
+                            <a
+                                @click="setActiveSection('routes')"
+                                class="nav-item"
+                                :class="{ 'nav-active': activeSection === 'routes' }"
+                            >
+                                <span class="nav-icon">🗺️</span>
+                                <span v-if="sidebarOpen" class="nav-text">Mis Rutas</span>
                             </a>
                         </li>
 
@@ -354,10 +366,22 @@
                                     <div class="service-icon">🚲</div>
                                     <h3>Mis Bicicletas</h3>
                                     <p>Gestionar mis bicicletas</p>
-                                    <button @click="setActiveSection('bikes')"
+                                    <button @click="setActiveSection('bicicletas')"
                                             class="service-btn"
                                             :disabled="!hasActiveMembership && !isAdmin">
                                         Ver Bicicletas
+                                    </button>
+                                    <span v-if="!hasActiveMembership && !isAdmin" class="premium-badge">Premium</span>
+                                </div>
+
+                                <div class="service-card" :class="{ disabled: !hasActiveMembership && !isAdmin }">
+                                    <div class="service-icon">🗺️</div>
+                                    <h3>Mis Rutas</h3>
+                                    <p>Planear rutas y reducir CO₂</p>
+                                    <button @click="setActiveSection('routes')"
+                                            class="service-btn"
+                                            :disabled="!hasActiveMembership && !isAdmin">
+                                        Ver Rutas
                                     </button>
                                     <span v-if="!hasActiveMembership && !isAdmin" class="premium-badge">Premium</span>
                                 </div>
@@ -405,6 +429,13 @@
                     </div>
                 </div>
 
+                <!-- Routes Section -->
+                <div v-else-if="activeSection === 'routes'" class="section">
+                    <div class="routes-container">
+                        <routes ref="routesComponent" />
+                    </div>
+                </div>
+
                 <!-- Profile Section -->
                 <div v-else-if="activeSection === 'profile'" class="section">
                     <div class="card">
@@ -449,8 +480,11 @@
                 </div>
 
                 <!-- Bikes Section -->
-                <div v-else-if="activeSection === 'bikes'" class="section">
-                    <bikes-list :user="user" />
+                <!-- Bikes Section -->
+                <div v-else-if="activeSection === 'bicicletas'" class="section">
+                    <div class="bikes-container">
+                        <bicicletas ref="bicicletasComponent" />
+                    </div>
                 </div>
 
                 <!-- Reports Section -->
@@ -502,20 +536,21 @@
         </div>
     </div>
 </template>
-
 <script>
 // Importar el componente de membresías y estaciones
 import MembershipPayment from './MembershipPayment.vue';
 import Estacion from './Estacion.vue';
 import UserManagement from "@/components/UserManagement.vue";
-import BikesList from "./BikesList.vue";
+import Routes from "@/components/Routes.vue";
+import bicicletas from "@/components/bicicletas.vue";
 
 export default {
     components: {
         MembershipPayment,
         Estacion,
-        BikesList,
-        UserManagement
+        UserManagement,
+        Routes,
+        bicicletas,
     },
 
     data() {
@@ -534,7 +569,6 @@ export default {
         isAdmin() {
             return this.user && this.user.role === 'admin';
         },
-
 
         canAccessReports() {
             return this.hasActiveMembership || this.isAdmin;
@@ -675,7 +709,8 @@ export default {
                 'memberships': 'Membresías',
                 'stations': 'Estaciones',
                 'profile': 'Mi Perfil',
-                'bikes': 'Mis Bicicletas',
+                'routes': 'Mis Rutas',
+                'bicicletas': 'Mis Bicicletas',
                 'reports': 'Reportes',
                 'users': 'Gestión de Usuarios',
                 'settings': 'Configuración'

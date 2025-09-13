@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\RouteController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\MembershipController;
@@ -7,32 +8,42 @@ use App\Http\Controllers\StationController;
 use App\Http\Controllers\BikeController;
 use App\Http\Controllers\BikeUsageHistoryController;
 use App\Http\Controllers\DamageReportController;
-use Illuminate\Http\Request;
-
 /*
 |--------------------------------------------------------------------------
 | Web Routes
 |--------------------------------------------------------------------------
+|
+| Here is where you can register web routes for your application. These
+| routes are loaded by the RouteServiceProvider and all of them will
+| be assigned to the "web" middleware group. Make something great!
+|
 */
-
-// Rutas públicas
 Route::get('/', [UserController::class, 'showLogin'])->name('login');
 Route::get('/login', [UserController::class, 'showLogin'])->name('login');
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
 Route::post('/logout', [UserController::class, 'logout']);
+Route::post('/create-user', [UserController::class, 'createUser'])->name('create.user');
 
-// Rutas autenticadas básicas
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [UserController::class, 'dashboard'])->name('dashboard');
     Route::get('/user', [UserController::class, 'getUser']);
     Route::get('/users-catalog', [UserController::class, 'getUsersCatalog']);
     Route::post('/create-admin', [UserController::class, 'createAdmin']);
+    // Ruta para crear usuario regular
+
+
+
+
+// Ruta para listar usuarios (si no la tienes ya)
 });
 
-// Rutas de membresías
+
 Route::middleware(['auth'])->group(function () {
+    // Vista principal de membresías
     Route::get('/memberships', [MembershipController::class, 'index'])->name('memberships.index');
+
+    // Rutas AJAX para el componente Vue
     Route::get('/memberships/plans', [MembershipController::class, 'getPlans'])->name('memberships.plans');
     Route::get('/memberships/current', [MembershipController::class, 'getCurrentMembership'])->name('memberships.current');
     Route::get('/memberships/history', [MembershipController::class, 'getMembershipHistory'])->name('memberships.history');
@@ -40,13 +51,32 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/memberships/cancel', [MembershipController::class, 'cancelMembership'])->name('memberships.cancel');
 });
 
+// Para APIs que se llaman desde el frontend web (con sesiones)
+Route::middleware(['web', 'auth'])->prefix('api')->group(function () {
+
+    // Rutas de membresías
+    Route::prefix('memberships')->group(function () {
+        Route::get('/current', [MembershipController::class, 'getCurrentMembership']);
+        Route::get('/user', [MembershipController::class, 'getUserMemberships']);
+        Route::post('/check-access', [MembershipController::class, 'checkAccess']);
+    });
+
+    // Ruta para obtener el usuario autenticado
+    Route::get('/user', function (Request $request) {
+        return response()->json([
+            'success' => true,
+            'user' => $request->user()
+        ]);
+    });
+});
+
 /*
 |--------------------------------------------------------------------------
-| API Routes
+| API Routes - Módulos 3 y 4
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth'])->prefix('api')->group(function () {
+Route::middleware([ 'auth'])->prefix('api')->group(function () {
 
     // Usuario autenticado
     Route::get('/user', function (Request $request) {
@@ -63,45 +93,21 @@ Route::middleware(['auth'])->prefix('api')->group(function () {
         Route::post('/check-access', [MembershipController::class, 'checkAccess']);
     });
 
-    // Estaciones
-    Route::prefix('stations')->group(function () {
-        Route::get('/', [StationController::class, 'index']);
-        Route::get('/types', [StationController::class, 'getTypeOptions']);
-        Route::get('/statistics', [StationController::class, 'getStatistics']);
-        Route::get('/{station}', [StationController::class, 'show']);
-        Route::get('/{station}/available-bikes', [StationController::class, 'getAvailableBikes']);
+    // ===============================
+    // ESTACIONES Y BICICLETAS
+    // ===============================
 
-        // Solo administradores
-        Route::middleware('admin')->group(function () {
-            Route::post('/', [StationController::class, 'store']);
-            Route::put('/{station}', [StationController::class, 'update']);
-            Route::delete('/{station}', [StationController::class, 'destroy']);
-        });
-    });
+    // Estaciones - RF-04
+    // Rutas de Estaciones
 
-    // Bicicletas
-    Route::prefix('bikes')->group(function () {
-        Route::get('/statistics', [BikeController::class, 'getStatistics']); // ESTA LÍNEA DEBE IR ANTES
-        Route::get('/types', [BikeController::class, 'getTypeOptions']);
-        Route::get('/statuses', [BikeController::class, 'getStatusOptions']);
-        Route::get('/', [BikeController::class, 'index']);
-        Route::get('/{bike}', [BikeController::class, 'show']);
-        Route::get('/bikes', [BikeController::class, 'index']);
-        Route::get('/bikes/statistics', [BikeController::class, 'getStatistics']);
-        // Acciones de usuario
-        Route::post('/{bike}/rent', [BikeController::class, 'rent']);
-        Route::post('/{bike}/return', [BikeController::class, 'returnBike']);
-        Route::post('/{bike}/report-damage', [BikeController::class, 'reportDamage']);
 
-        // Solo administradores
-        Route::middleware('admin')->group(function () {
-            Route::post('/', [BikeController::class, 'store']);
-            Route::put('/{bike}', [BikeController::class, 'update']);
-            Route::delete('/{bike}', [BikeController::class, 'destroy']);
-        });
-    });
+// Rutas de Bicicletas
 
-    // Historial de uso
+    // ===============================
+    // USO DE BICICLETAS
+    // ===============================
+
+    // Historial de uso - RF-07
     Route::prefix('usage-history')->group(function () {
         Route::get('/', [BikeUsageHistoryController::class, 'index']);
         Route::get('/current', [BikeUsageHistoryController::class, 'getCurrentUsage']);
@@ -112,12 +118,13 @@ Route::middleware(['auth'])->prefix('api')->group(function () {
         Route::post('/{usage}/complete', [BikeUsageHistoryController::class, 'complete']);
         Route::post('/{usage}/cancel', [BikeUsageHistoryController::class, 'cancel']);
 
+        // Solo para administradores
         Route::middleware('admin')->group(function () {
             Route::get('/general-stats', [BikeUsageHistoryController::class, 'getGeneralStats']);
         });
     });
 
-    // Reportes de daño
+    // Reportes de daño - RF-08
     Route::prefix('damage-reports')->group(function () {
         Route::get('/', [DamageReportController::class, 'index']);
         Route::get('/severities', [DamageReportController::class, 'getSeverityOptions']);
@@ -128,6 +135,7 @@ Route::middleware(['auth'])->prefix('api')->group(function () {
         Route::post('/{damageReport}/photos', [DamageReportController::class, 'addPhoto']);
         Route::delete('/{damageReport}/photos', [DamageReportController::class, 'removePhoto']);
 
+        // Solo para administradores
         Route::middleware('admin')->group(function () {
             Route::put('/{damageReport}', [DamageReportController::class, 'update']);
             Route::post('/{damageReport}/review', [DamageReportController::class, 'markAsInReview']);
@@ -136,25 +144,14 @@ Route::middleware(['auth'])->prefix('api')->group(function () {
             Route::get('/statistics', [DamageReportController::class, 'getStatistics']);
         });
     });
-
-    // Estaciones (rutas adicionales)
-    Route::get('/estaciones/data', [StationController::class, 'index'])->name('estaciones.data');
-    Route::get('/estaciones/{id}', [StationController::class, 'show'])->name('estaciones.show');
-    Route::get('/estaciones/mapas', [StationController::class, 'paraMapas'])->name('estaciones.mapas');
-
-    Route::middleware('admin')->group(function () {
-        Route::post('/estaciones', [StationController::class, 'store'])->name('estaciones.store');
-        Route::put('/estaciones/{id}', [StationController::class, 'update'])->name('estaciones.update');
-        Route::delete('/estaciones/{id}', [StationController::class, 'destroy'])->name('estaciones.destroy');
-        Route::get('/estaciones/estadisticas', [StationController::class, 'estadisticas'])->name('estaciones.estadisticas');
-    });
 });
 
-// Rutas públicas
+// Rutas públicas (sin autenticación)
 Route::prefix('public')->group(function () {
+    // Información básica de estaciones para mapas públicos
     Route::get('stations', function () {
-        $stations = \App\Models\Estacion::active()
-            ->select('id', 'nombre as name', 'id as code', 'latitud as latitude', 'longitud as longitude', 'tipo_estacion as type')
+        $stations = \App\Models\Station::active()
+            ->select('id', 'name', 'code', 'latitude', 'longitude', 'type')
             ->withCount(['availableBikes'])
             ->get();
 
@@ -164,3 +161,46 @@ Route::prefix('public')->group(function () {
         ]);
     });
 });
+Route::middleware(['auth'])->group(function () {
+    // Rutas del módulo de rutas - IMPORTANTE: Las rutas más específicas van primero
+    Route::get('/routes/badges', [RouteController::class, 'getBadges'])->name('routes.badges');
+    Route::get('/routes', [RouteController::class, 'index'])->name('routes.index');
+    Route::post('/routes', [RouteController::class, 'store'])->name('routes.store');
+    Route::patch('/routes/{route}/complete', [RouteController::class, 'complete'])->name('routes.complete');
+    Route::delete('/routes/{route}', [RouteController::class, 'destroy'])->name('routes.destroy');
+});
+Route::middleware(['auth'])->group(function () {
+    Route::get('/stations', [StationController::class, 'index'])->name('stations.index');
+    Route::get('/stations/data', [StationController::class, 'getData'])->name('stations.data');
+    Route::get('/stations/{station}', [StationController::class, 'show'])->name('stations.show');
+
+    // Solo admins pueden crear, editar y eliminar
+    Route::middleware(['auth'])->group(function () {
+        Route::post('/stations', [StationController::class, 'store'])->name('stations.store');
+        Route::put('/stations/{station}', [StationController::class, 'update'])->name('stations.update');
+        Route::delete('/stations/{station}', [StationController::class, 'destroy'])->name('stations.destroy');
+        Route::patch('/stations/{station}/toggle-status', [StationController::class, 'toggleStatus'])->name('stations.toggle-status');
+    });
+
+
+
+});
+//Rutas de Bicicletas
+    Route::middleware(['auth'])->group(function () {
+        // Rutas que todos los usuarios autenticados pueden acceder
+        Route::get('/bikes', [BikeController::class, 'index'])->name('bikes.index');
+        Route::get('/bikes/data', [BikeController::class, 'getData'])->name('bikes.data');
+
+        // Rutas específicas van antes que las rutas con parámetros
+        Route::get('/bikes/create', [BikeController::class, 'create'])->name('bikes.create');
+
+        // Rutas con parámetros van al final
+        Route::get('/bikes/{bike}', [BikeController::class, 'show'])->name('bikes.show');
+        Route::get('/bikes/{bike}/edit', [BikeController::class, 'edit'])->name('bikes.edit');
+        Route::post('/bikes', [BikeController::class, 'store'])->name('bikes.store');
+        Route::put('/bikes/{bike}', [BikeController::class, 'update'])->name('bikes.update');
+        Route::delete('/bikes/{bike}', [BikeController::class, 'destroy'])->name('bikes.destroy');
+        Route::patch('/bikes/{bike}/toggle-status', [BikeController::class, 'toggleStatus'])->name('bikes.toggle-status');
+        Route::patch('/bikes/{bike}/move-to-station', [BikeController::class, 'moveToStation'])->name('bikes.move-to-station');
+        Route::patch('/bikes/{bike}/update-battery', [BikeController::class, 'updateBattery'])->name('bikes.update-battery');
+    });

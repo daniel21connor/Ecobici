@@ -3,330 +3,552 @@
 namespace App\Http\Controllers;
 
 use App\Models\Bike;
-use App\Models\Estacion;
+use App\Models\Station;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class BikeController extends Controller
 {
-    public function index(Request $request): JsonResponse
+
+    /**
+     * Display a listing of the resource.
+     * Devuelve JSON para el dashboard
+     */
+    public function index(Request $request)
     {
-        $query = Bike::with('estacion')->active(); // Cambio: estacion en lugar de station
+        try {
+            $user = Auth::user();
 
-        // Filtros
-        if ($request->has('type') && $request->type) {
-            $query->ofType($request->type);
-        }
-
-        if ($request->has('status') && $request->status) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->has('estacion_id') && $request->estacion_id) {
-            $query->inStation($request->estacion_id);
-        }
-
-        if ($request->has('available') && $request->boolean('available')) {
-            $query->available();
-        }
-
-        // Búsqueda por código o descripción
-        if ($request->has('search') && $request->search) {
-            $query->where(function($q) use ($request) {
-                $q->where('code', 'LIKE', "%{$request->search}%")
-                    ->orWhere('description', 'LIKE', "%{$request->search}%");
-            });
-        }
-
-        $bikes = $query->paginate($request->per_page ?? 15);
-
-        return response()->json([
-            'success' => true,
-            'data' => $bikes->getCollection()->map(function($bike) {
-                return [
-                    'id' => $bike->id,
-                    'code' => $bike->code,
-                    'type' => $bike->type,
-                    'status' => $bike->status,
-                    'battery_level' => $bike->battery_level,
-                    'battery_status' => $bike->battery_status,
-                    'is_available' => $bike->is_available,
-                    'is_electric' => $bike->is_electric,
-                    'can_be_rented' => $bike->canBeRented(),
-                    'total_usage_time' => $bike->total_usage_time,
-                    'estacion' => $bike->estacion ? [ // Cambio: estacion en lugar de station
-                        'id' => $bike->estacion->id,
-                        'name' => $bike->estacion->name,
-                        'code' => $bike->estacion->code,
-                        'type' => $bike->estacion->type,
-                    ] : null,
-                    'created_at' => $bike->created_at,
-                ];
-            }),
-            'pagination' => [
-                'current_page' => $bikes->currentPage(),
-                'last_page' => $bikes->lastPage(),
-                'per_page' => $bikes->perPage(),
-                'total' => $bikes->total(),
-            ]
-        ]);
-    }
-
-    public function show(Bike $bike): JsonResponse
-    {
-        $bike->load(['estacion', 'currentUsage.user', 'activeDamageReports']);
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'id' => $bike->id,
-                'code' => $bike->code,
-                'type' => $bike->type,
-                'status' => $bike->status,
-                'battery_level' => $bike->battery_level,
-                'battery_status' => $bike->battery_status,
-                'description' => $bike->description,
-                'purchase_price' => $bike->purchase_price,
-                'purchase_date' => $bike->purchase_date,
-                'last_maintenance' => $bike->last_maintenance,
-                'is_available' => $bike->is_available,
-                'is_electric' => $bike->is_electric,
-                'can_be_rented' => $bike->canBeRented(),
-                'total_usage_time' => $bike->total_usage_time,
-                'estacion' => $bike->estacion ? [
-                    'id' => $bike->estacion->id,
-                    'name' => $bike->estacion->name,
-                    'code' => $bike->estacion->code,
-                    'type' => $bike->estacion->type,
-                ] : null,
-                'current_usage' => $bike->currentUsage ? [
-                    'id' => $bike->currentUsage->id,
-                    'user' => $bike->currentUsage->user->name,
-                    'start_time' => $bike->currentUsage->start_time,
-                    'start_station' => $bike->currentUsage->startStation->name,
-                ] : null,
-                'active_damage_reports' => $bike->activeDamageReports->map(function($report) {
-                    return [
-                        'id' => $report->id,
-                        'description' => $report->description,
-                        'severity' => $report->severity,
-                        'status' => $report->status,
-                        'created_at' => $report->created_at,
-                    ];
-                }),
-                'created_at' => $bike->created_at,
-            ]
-        ]);
-    }
-
-    public function store(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'code' => 'required|string|max:20|unique:bikes',
-            'type' => ['required', Rule::in(['tradicional', 'electrica'])],
-            'estacion_id' => 'required|exists:estaciones,id', // Cambio: estaciones en lugar de stations
-            'battery_level' => 'nullable|integer|between:0,100',
-            'description' => 'nullable|string',
-            'purchase_price' => 'nullable|numeric|min:0',
-            'purchase_date' => 'nullable|date',
-            'last_maintenance' => 'nullable|date',
-        ]);
-
-        // Verificar capacidad de la estación
-        $estacion = Estacion::find($validated['estacion_id']);
-        if (!$estacion->canAcceptBike()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'La estación ha alcanzado su capacidad máxima'
-            ], 422);
-        }
-
-        // Establecer valores por defecto
-        $validated['status'] = 'disponible';
-        $validated['is_active'] = true;
-
-        // Para bicicletas eléctricas, establecer nivel de batería por defecto
-        if ($validated['type'] === 'electrica' && !isset($validated['battery_level'])) {
-            $validated['battery_level'] = 100;
-        }
-
-        $bike = Bike::create($validated);
-
-        return response()->json([
-            'success' => true,
-            'data' => $bike->load('estacion'),
-            'message' => 'Bicicleta registrada exitosamente'
-        ], 201);
-    }
-
-    public function update(Request $request, Bike $bike): JsonResponse
-    {
-        $validated = $request->validate([
-            'code' => 'sometimes|string|max:20|unique:bikes,code,' . $bike->id,
-            'type' => ['sometimes', Rule::in(['tradicional', 'electrica'])],
-            'status' => ['sometimes', Rule::in(['disponible', 'en_uso', 'en_reparacion', 'mantenimiento'])],
-            'estacion_id' => 'sometimes|exists:estaciones,id',
-            'battery_level' => 'nullable|integer|between:0,100',
-            'description' => 'nullable|string',
-            'purchase_price' => 'nullable|numeric|min:0',
-            'purchase_date' => 'nullable|date',
-            'last_maintenance' => 'nullable|date',
-            'is_active' => 'sometimes|boolean',
-        ]);
-
-        // Si se cambia la estación, verificar capacidad
-        if (isset($validated['estacion_id']) && $validated['estacion_id'] !== $bike->estacion_id) {
-            $estacion = Estacion::find($validated['estacion_id']);
-            if (!$estacion->canAcceptBike()) {
+            if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'La estación destino ha alcanzado su capacidad máxima'
-                ], 422);
+                    'message' => 'Usuario no autenticado'
+                ], 401);
             }
-        }
 
-        $bike->update($validated);
+            $query = Bike::with('station')->orderBy('code');
 
-        return response()->json([
-            'success' => true,
-            'data' => $bike->fresh()->load('estacion'),
-            'message' => 'Bicicleta actualizada exitosamente'
-        ]);
-    }
+            // Filtros opcionales
+            if ($request->filled('is_active')) {
+                $query->where('is_active', $request->is_active);
+            }
 
-    public function destroy(Bike $bike): JsonResponse
-    {
-        // Verificar que no esté en uso
-        if ($bike->status === 'en_uso') {
-            return response()->json([
-                'success' => false,
-                'message' => 'No se puede eliminar una bicicleta en uso'
-            ], 422);
-        }
+            if ($request->filled('station_id')) {
+                $query->where('station_id', $request->station_id);
+            }
 
-        $bike->update(['is_active' => false]);
+            if ($request->filled('search')) {
+                $query->where(function($q) use ($request) {
+                    $q->where('code', 'LIKE', '%' . $request->search . '%')
+                        ->orWhere('brand', 'LIKE', '%' . $request->search . '%');
+                });
+            }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Bicicleta desactivada exitosamente'
-        ]);
-    }
-
-    public function rent(Request $request, Bike $bike): JsonResponse
-    {
-        $validated = $request->validate([
-            'estacion_id' => 'required|exists:estaciones,id',
-        ]);
-
-        try {
-            $usage = $bike->startUsage(
-                auth()->id(),
-                $validated['estacion_id']
-            );
+            // Si es paginado o no
+            if ($request->filled('paginate') && $request->paginate == 'true') {
+                $bikes = $query->paginate(15);
+            } else {
+                $bikes = $query->get();
+            }
 
             return response()->json([
                 'success' => true,
-                'data' => [
-                    'usage_id' => $usage->id,
-                    'bike' => [
-                        'id' => $bike->id,
-                        'code' => $bike->code,
-                        'type' => $bike->type,
-                        'battery_level' => $bike->battery_level,
-                    ],
-                    'start_time' => $usage->start_time,
-                    'start_station' => $usage->startStation->name,
-                ],
-                'message' => 'Bicicleta alquilada exitosamente'
+                'bikes' => $bikes
             ]);
+
         } catch (\Exception $e) {
+            Log::error('Error en BikeController@index: ' . $e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
-            ], 422);
+                'message' => 'Error al cargar bicicletas: ' . $e->getMessage()
+            ], 500);
         }
     }
 
-    public function returnBike(Request $request, Bike $bike): JsonResponse
+    /**
+     * Show the form for creating a new resource.
+     */
+    public function create(Request $request)
     {
-        $validated = $request->validate([
-            'estacion_id' => 'required|exists:estaciones,id',
-            'notes' => 'nullable|string|max:500',
-        ]);
-
         try {
-            // Verificar capacidad de la estación de retorno
-            $estacion = Estacion::find($validated['estacion_id']);
-            if (!$estacion->canAcceptBike()) {
+            $user = Auth::user();
+
+            if ($user->role !== 'admin') {
                 return response()->json([
                     'success' => false,
-                    'message' => 'La estación de retorno ha alcanzado su capacidad máxima'
-                ], 422);
+                    'message' => 'No tienes permisos para crear bicicletas.'
+                ], 403);
             }
 
-            $usage = $bike->endUsage(
-                $validated['estacion_id'],
-                $validated['notes'] ?? null
-            );
+            $stations = Station::where('is_active', true)->get();
 
             return response()->json([
                 'success' => true,
-                'data' => [
-                    'usage_id' => $usage->id,
-                    'duration' => $usage->duration_formatted,
-                    'end_station' => $usage->endStation->name,
-                ],
-                'message' => 'Bicicleta devuelta exitosamente'
+                'stations' => $stations
             ]);
+
         } catch (\Exception $e) {
+            Log::error('Error en BikeController@create: ' . $e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
-            ], 422);
+                'message' => 'Error al acceder al formulario: ' . $e->getMessage()
+            ], 500);
         }
     }
 
-    public function getTypeOptions(): JsonResponse
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request)
     {
-        return response()->json([
-            'success' => true,
-            'data' => Bike::getTypeOptions()
-        ]);
+        try {
+            $user = Auth::user();
+
+            if ($user->role !== 'admin') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permisos para crear bicicletas.'
+                ], 403);
+            }
+
+            $rules = [
+                'code' => 'required|string|max:20|unique:bikes',
+                'type' => 'required|in:tradicional,electrica',
+                'status' => 'required|in:disponible,en_uso,en_reparacion,mantenimiento',
+                'station_id' => 'nullable|exists:stations,id',
+                'description' => 'nullable|string',
+                'purchase_price' => 'nullable|numeric|min:0',
+                'purchase_date' => 'nullable|date|before_or_equal:today',
+                'last_maintenance' => 'nullable|date|before_or_equal:today',
+                'is_active' => 'boolean'
+            ];
+
+            // Validación adicional para bicicletas eléctricas
+            if ($request->type === 'electrica') {
+                $rules['battery_level'] = 'required|integer|min:0|max:100';
+            }
+
+            $validatedData = $request->validate($rules, [
+                'code.required' => 'El código de la bicicleta es obligatorio',
+                'code.unique' => 'Ya existe una bicicleta con ese código',
+                'type.required' => 'El tipo de bicicleta es obligatorio',
+                'status.required' => 'El estado de la bicicleta es obligatorio',
+                'battery_level.required' => 'El nivel de batería es obligatorio para bicicletas eléctricas',
+                'battery_level.min' => 'El nivel de batería mínimo es 0%',
+                'battery_level.max' => 'El nivel de batería máximo es 100%'
+            ]);
+
+            // Verificar capacidad de la estación si se asigna una
+            if ($request->station_id) {
+                $station = Station::find($request->station_id);
+                $currentBikes = $station->bikes()->where('is_active', true)->count();
+
+                if ($currentBikes >= $station->capacity) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'La estación ha alcanzado su capacidad máxima.'
+                    ], 422);
+                }
+            }
+
+            $bikeData = $validatedData;
+
+            // Si no es eléctrica, asegurar que battery_level sea null
+            if ($request->type !== 'electrica') {
+                $bikeData['battery_level'] = null;
+            }
+
+            $bike = Bike::create($bikeData);
+            $bike->load('station');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Bicicleta creada exitosamente',
+                'bike' => $bike
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación',
+                'errors' => $e->errors()
+            ], 422);
+
+        } catch (\Exception $e) {
+            Log::error('Error en BikeController@store: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al crear la bicicleta: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
-    public function getStatusOptions(): JsonResponse
+    /**
+     * Display the specified resource.
+     */
+    public function show(Request $request, Bike $bike)
     {
-        return response()->json([
-            'success' => true,
-            'data' => Bike::getStatusOptions()
-        ]);
+        try {
+            $bike->load('station');
+
+            return response()->json([
+                'success' => true,
+                'bike' => $bike
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error en BikeController@show: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cargar la bicicleta: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
-    public function getStatistics(): JsonResponse
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(Request $request, Bike $bike)
     {
-        $stats = [
-            'total_bikes' => Bike::active()->count(),
-            'by_type' => [
-                'tradicional' => Bike::active()->ofType('tradicional')->count(),
-                'electrica' => Bike::active()->ofType('electrica')->count(),
-            ],
-            'by_status' => [
-                'disponible' => Bike::active()->where('status', 'disponible')->count(),
-                'en_uso' => Bike::active()->where('status', 'en_uso')->count(),
-                'en_reparacion' => Bike::active()->where('status', 'en_reparacion')->count(),
-                'mantenimiento' => Bike::active()->where('status', 'mantenimiento')->count(),
-            ],
-            'average_usage_time' => Bike::active()->avg('total_usage_time') ?? 0,
-            'low_battery_count' => Bike::active()
-                ->where('type', 'electrica')
-                ->where('battery_level', '<=', 20)
-                ->count(),
-        ];
+        try {
+            $user = Auth::user();
 
-        return response()->json([
-            'success' => true,
-            'data' => $stats
-        ]);
+            if ($user->role !== 'admin') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permisos para editar bicicletas.'
+                ], 403);
+            }
+
+            $stations = Station::where('is_active', true)->get();
+
+            return response()->json([
+                'success' => true,
+                'bike' => $bike->load('station'),
+                'stations' => $stations
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error en BikeController@edit: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al acceder al formulario de edición: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, Bike $bike)
+    {
+        try {
+            $user = Auth::user();
+
+            if ($user->role !== 'admin') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permisos para editar bicicletas.'
+                ], 403);
+            }
+
+            $rules = [
+                'code' => 'required|string|max:20|unique:bikes,code,' . $bike->id,
+                'type' => 'required|in:tradicional,electrica',
+                'status' => 'required|in:disponible,en_uso,en_reparacion,mantenimiento',
+                'station_id' => 'nullable|exists:stations,id',
+                'description' => 'nullable|string',
+                'purchase_price' => 'nullable|numeric|min:0',
+                'purchase_date' => 'nullable|date|before_or_equal:today',
+                'last_maintenance' => 'nullable|date|before_or_equal:today',
+                'is_active' => 'boolean'
+            ];
+
+            if ($request->type === 'electrica') {
+                $rules['battery_level'] = 'required|integer|min:0|max:100';
+            }
+
+            $validatedData = $request->validate($rules, [
+                'code.required' => 'El código de la bicicleta es obligatorio',
+                'code.unique' => 'Ya existe una bicicleta con ese código',
+                'type.required' => 'El tipo de bicicleta es obligatorio',
+                'status.required' => 'El estado de la bicicleta es obligatorio',
+                'battery_level.required' => 'El nivel de batería es obligatorio para bicicletas eléctricas'
+            ]);
+
+            // Verificar capacidad si se cambia de estación
+            if ($request->station_id && $request->station_id != $bike->station_id) {
+                $station = Station::find($request->station_id);
+                $currentBikes = $station->bikes()->where('is_active', true)->where('id', '!=', $bike->id)->count();
+
+                if ($currentBikes >= $station->capacity) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'La estación ha alcanzado su capacidad máxima.'
+                    ], 422);
+                }
+            }
+
+            $bikeData = $validatedData;
+
+            if ($request->type !== 'electrica') {
+                $bikeData['battery_level'] = null;
+            }
+
+            $bike->update($bikeData);
+            $bike->load('station');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Bicicleta actualizada exitosamente',
+                'bike' => $bike->fresh()->load('station')
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación',
+                'errors' => $e->errors()
+            ], 422);
+
+        } catch (\Exception $e) {
+            Log::error('Error en BikeController@update: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar la bicicleta: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Request $request, Bike $bike)
+    {
+        try {
+            $user = Auth::user();
+
+            if ($user->role !== 'admin') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permisos para eliminar bicicletas.'
+                ], 403);
+            }
+
+            if ($bike->status === 'en_uso') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede eliminar una bicicleta que está en uso.'
+                ], 422);
+            }
+
+            $bikeCode = $bike->code;
+            $bike->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Bicicleta '{$bikeCode}' eliminada exitosamente"
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error en BikeController@destroy: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al eliminar la bicicleta: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Toggle bike status
+     */
+    public function toggleStatus(Request $request, Bike $bike)
+    {
+        try {
+            $user = Auth::user();
+
+            if ($user->role !== 'admin') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permisos para cambiar el estado de bicicletas.'
+                ], 403);
+            }
+
+            $bike->update(['is_active' => !$bike->is_active]);
+            $bike->load('station');
+
+            $status = $bike->is_active ? 'activada' : 'desactivada';
+
+            return response()->json([
+                'success' => true,
+                'message' => "Bicicleta {$status} exitosamente",
+                'bike' => $bike->fresh()->load('station')
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error en BikeController@toggleStatus: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cambiar el estado: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Move bike to station
+     */
+    public function moveToStation(Request $request, Bike $bike)
+    {
+        try {
+            $user = Auth::user();
+
+            if ($user->role !== 'admin') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permisos para mover bicicletas.'
+                ], 403);
+            }
+
+            $validatedData = $request->validate([
+                'station_id' => 'required|exists:stations,id'
+            ]);
+
+            $station = Station::find($request->station_id);
+            $currentBikes = $station->bikes()->where('is_active', true)->where('id', '!=', $bike->id)->count();
+
+            if ($currentBikes >= $station->capacity) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La estación ha alcanzado su capacidad máxima.'
+                ], 422);
+            }
+
+            $bike->update([
+                'station_id' => $request->station_id,
+                'status' => 'disponible'
+            ]);
+
+            $bike->load('station');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Bicicleta movida a la estación exitosamente',
+                'bike' => $bike->fresh()->load('station')
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación',
+                'errors' => $e->errors()
+            ], 422);
+
+        } catch (\Exception $e) {
+            Log::error('Error en BikeController@moveToStation: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al mover la bicicleta: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update battery level for electric bikes
+     */
+    public function updateBattery(Request $request, Bike $bike)
+    {
+        try {
+            $user = Auth::user();
+
+            if ($user->role !== 'admin') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permisos para actualizar la batería.'
+                ], 403);
+            }
+
+            if ($bike->type !== 'electrica') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Esta bicicleta no es eléctrica.'
+                ], 422);
+            }
+
+            $validatedData = $request->validate([
+                'battery_level' => 'required|integer|min:0|max:100'
+            ]);
+
+            $bike->update(['battery_level' => $request->battery_level]);
+            $bike->load('station');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Nivel de batería actualizado exitosamente',
+                'bike' => $bike->fresh()->load('station')
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación',
+                'errors' => $e->errors()
+            ], 422);
+
+        } catch (\Exception $e) {
+            Log::error('Error en BikeController@updateBattery: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar la batería: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get bikes data for API/AJAX calls
+     */
+    public function getData(Request $request)
+    {
+        try {
+            // Cambiar 'stations' por 'station' (singular)
+            $query = Bike::with('station');
+
+            if ($request->filled('station_id')) {
+                $query->where('station_id', $request->station_id);
+            }
+
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+
+            if ($request->filled('type')) {
+                $query->where('type', $request->type);
+            }
+
+            $bikes = $query->where('is_active', true)->get();
+
+            return response()->json([
+                'success' => true,
+                'bikes' => $bikes
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error en BikeController@getData: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener datos de bicicletas: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

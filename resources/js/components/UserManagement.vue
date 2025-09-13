@@ -2,13 +2,22 @@
     <div class="users-management">
         <div class="header-section">
             <h2 class="page-title">Gestión de Usuarios</h2>
-            <button
-                @click="showCreateAdminModal = true"
-                class="btn btn-primary"
-                :disabled="loading"
-            >
-                Crear Administrador
-            </button>
+            <div class="header-buttons">
+                <button
+                    @click="showCreateUserModal = true"
+                    class="btn btn-success"
+                    :disabled="loading"
+                >
+                    Crear Usuario
+                </button>
+                <button
+                    @click="showCreateAdminModal = true"
+                    class="btn btn-primary"
+                    :disabled="loading"
+                >
+                    Crear Administrador
+                </button>
+            </div>
         </div>
 
         <!-- Buscador -->
@@ -95,12 +104,152 @@
             </div>
         </div>
 
+        <!-- Modal para crear usuario regular -->
+        <div v-if="showCreateUserModal" class="modal-overlay" @click="closeUserModal">
+            <div class="modal-content" @click.stop>
+                <div class="modal-header">
+                    <h3>Crear Nuevo Usuario</h3>
+                    <button @click="closeUserModal" class="close-btn">&times;</button>
+                </div>
+
+                <form @submit.prevent="createUser" class="user-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="user-name">Nombre *</label>
+                            <input
+                                type="text"
+                                id="user-name"
+                                v-model="userData.name"
+                                class="form-control"
+                                placeholder="Nombre del usuario"
+                                :disabled="creatingUser"
+                                required
+                            />
+                        </div>
+                        <div class="form-group">
+                            <label for="user-apellidos">Apellidos *</label>
+                            <input
+                                type="text"
+                                id="user-apellidos"
+                                v-model="userData.apellidos"
+                                class="form-control"
+                                placeholder="Apellidos del usuario"
+                                :disabled="creatingUser"
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="user-email">Correo *</label>
+                        <input
+                            type="email"
+                            id="user-email"
+                            v-model="userData.email"
+                            class="form-control"
+                            placeholder="correo@ejemplo.com"
+                            :disabled="creatingUser"
+                            required
+                        />
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="user-dpi">DPI *</label>
+                            <input
+                                type="text"
+                                id="user-dpi"
+                                v-model="userData.dpi"
+                                class="form-control"
+                                placeholder="1234567890123"
+                                maxlength="13"
+                                pattern="[0-9]{13}"
+                                :disabled="creatingUser"
+                                required
+                            />
+                        </div>
+                        <div class="form-group">
+                            <label for="user-fecha-nacimiento">Fecha de Nacimiento *</label>
+                            <input
+                                type="date"
+                                id="user-fecha-nacimiento"
+                                v-model="userData.fecha_nacimiento"
+                                class="form-control"
+                                :disabled="creatingUser"
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="user-telefono">Teléfono</label>
+                        <input
+                            type="tel"
+                            id="user-telefono"
+                            v-model="userData.telefono"
+                            class="form-control"
+                            placeholder="+502 1234-5678"
+                            :disabled="creatingUser"
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="user-password">Contraseña *</label>
+                        <input
+                            type="password"
+                            id="user-password"
+                            v-model="userData.password"
+                            class="form-control"
+                            placeholder="Mínimo 6 caracteres"
+                            :disabled="creatingUser"
+                            required
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="user-foto">Foto de Perfil</label>
+                        <input
+                            type="file"
+                            id="user-foto"
+                            @change="handleUserFileUpload"
+                            class="form-control file-input"
+                            accept="image/jpeg,image/png,image/jpg,image/gif"
+                            :disabled="creatingUser"
+                        />
+                        <small class="form-text">Opcional. Máximo 2MB. Formatos: JPG, PNG, GIF</small>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button
+                            type="button"
+                            @click="closeUserModal"
+                            class="btn btn-secondary"
+                            :disabled="creatingUser"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            class="btn btn-success"
+                            :disabled="creatingUser"
+                        >
+                            <span v-if="creatingUser">Creando...</span>
+                            <span v-else>Crear Usuario</span>
+                        </button>
+                    </div>
+                </form>
+
+                <p v-if="userModalError" class="text-danger">{{ userModalError }}</p>
+                <p v-if="userModalSuccess" class="text-success">{{ userModalSuccess }}</p>
+            </div>
+        </div>
+
         <!-- Modal para crear administrador -->
-        <div v-if="showCreateAdminModal" class="modal-overlay" @click="closeModal">
+        <div v-if="showCreateAdminModal" class="modal-overlay" @click="closeAdminModal">
             <div class="modal-content" @click.stop>
                 <div class="modal-header">
                     <h3>Crear Nuevo Administrador</h3>
-                    <button @click="closeModal" class="close-btn">&times;</button>
+                    <button @click="closeAdminModal" class="close-btn">&times;</button>
                 </div>
 
                 <form @submit.prevent="createAdmin" class="admin-form">
@@ -213,7 +362,7 @@
                     <div class="modal-footer">
                         <button
                             type="button"
-                            @click="closeModal"
+                            @click="closeAdminModal"
                             class="btn btn-secondary"
                             :disabled="creatingAdmin"
                         >
@@ -230,8 +379,8 @@
                     </div>
                 </form>
 
-                <p v-if="modalError" class="text-danger">{{ modalError }}</p>
-                <p v-if="modalSuccess" class="text-success">{{ modalSuccess }}</p>
+                <p v-if="adminModalError" class="text-danger">{{ adminModalError }}</p>
+                <p v-if="adminModalSuccess" class="text-success">{{ adminModalSuccess }}</p>
             </div>
         </div>
 
@@ -252,11 +401,27 @@ export default {
             error: null,
             successMessage: null,
 
+            // Modal para crear usuario regular
+            showCreateUserModal: false,
+            creatingUser: false,
+            userModalError: null,
+            userModalSuccess: null,
+            userData: {
+                name: '',
+                apellidos: '',
+                email: '',
+                dpi: '',
+                fecha_nacimiento: '',
+                telefono: '',
+                password: '',
+                foto: null
+            },
+
             // Modal para crear admin
             showCreateAdminModal: false,
             creatingAdmin: false,
-            modalError: null,
-            modalSuccess: null,
+            adminModalError: null,
+            adminModalSuccess: null,
             adminData: {
                 name: '',
                 apellidos: '',
@@ -341,13 +506,13 @@ export default {
             this.loadUsers();
         },
 
-        // Manejar archivo del admin
-        handleAdminFileUpload(event) {
+        // Manejar archivo del usuario
+        handleUserFileUpload(event) {
             const file = event.target.files[0];
             if (file) {
                 // Validar tamaño (2MB max)
                 if (file.size > 2 * 1024 * 1024) {
-                    this.modalError = 'La imagen no debe superar los 2MB';
+                    this.userModalError = 'La imagen no debe superar los 2MB';
                     event.target.value = '';
                     return;
                 }
@@ -355,21 +520,115 @@ export default {
                 // Validar tipo
                 const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif'];
                 if (!allowedTypes.includes(file.type)) {
-                    this.modalError = 'Formato no válido. Use JPG, PNG o GIF';
+                    this.userModalError = 'Formato no válido. Use JPG, PNG o GIF';
+                    event.target.value = '';
+                    return;
+                }
+
+                this.userData.foto = file;
+                this.userModalError = null;
+            }
+        },
+
+        // Manejar archivo del admin
+        handleAdminFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                // Validar tamaño (2MB max)
+                if (file.size > 2 * 1024 * 1024) {
+                    this.adminModalError = 'La imagen no debe superar los 2MB';
+                    event.target.value = '';
+                    return;
+                }
+
+                // Validar tipo
+                const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif'];
+                if (!allowedTypes.includes(file.type)) {
+                    this.adminModalError = 'Formato no válido. Use JPG, PNG o GIF';
                     event.target.value = '';
                     return;
                 }
 
                 this.adminData.foto = file;
-                this.modalError = null;
+                this.adminModalError = null;
+            }
+        },
+
+        // Crear usuario regular
+        async createUser() {
+            this.creatingUser = true;
+            this.userModalError = null;
+            this.userModalSuccess = null;
+
+            try {
+                const formData = new FormData();
+                formData.append('name', this.userData.name);
+                formData.append('apellidos', this.userData.apellidos);
+                formData.append('email', this.userData.email);
+                formData.append('dpi', this.userData.dpi);
+                formData.append('fecha_nacimiento', this.userData.fecha_nacimiento);
+                formData.append('telefono', this.userData.telefono || '');
+                formData.append('password', this.userData.password);
+
+                if (this.userData.foto) {
+                    formData.append('foto', this.userData.foto);
+                }
+
+                const response = await fetch('/create-user', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    this.userModalSuccess = 'Usuario creado exitosamente';
+
+                    // Limpiar formulario
+                    this.userData = {
+                        name: '',
+                        apellidos: '',
+                        email: '',
+                        dpi: '',
+                        fecha_nacimiento: '',
+                        telefono: '',
+                        password: '',
+                        foto: null
+                    };
+
+                    // Recargar lista de usuarios
+                    setTimeout(() => {
+                        this.closeUserModal();
+                        this.loadUsers();
+                        this.successMessage = 'Usuario creado exitosamente';
+                        setTimeout(() => this.successMessage = null, 5000);
+                    }, 2000);
+                } else {
+                    // Mostrar errores de validación
+                    if (result.errors) {
+                        const errorMessages = Object.values(result.errors).flat();
+                        this.userModalError = errorMessages.join('. ');
+                    } else {
+                        this.userModalError = result.error || 'Error al crear el usuario';
+                    }
+                }
+            } catch (err) {
+                console.error('Error creating user:', err);
+                this.userModalError = 'Error de conexión al crear el usuario';
+            } finally {
+                this.creatingUser = false;
             }
         },
 
         // Crear administrador
         async createAdmin() {
             this.creatingAdmin = true;
-            this.modalError = null;
-            this.modalSuccess = null;
+            this.adminModalError = null;
+            this.adminModalSuccess = null;
 
             try {
                 const formData = new FormData();
@@ -397,7 +656,7 @@ export default {
                 const result = await response.json();
 
                 if (response.ok && result.success) {
-                    this.modalSuccess = 'Administrador creado exitosamente';
+                    this.adminModalSuccess = 'Administrador creado exitosamente';
 
                     // Limpiar formulario
                     this.adminData = {
@@ -413,7 +672,7 @@ export default {
 
                     // Recargar lista de usuarios
                     setTimeout(() => {
-                        this.closeModal();
+                        this.closeAdminModal();
                         this.loadUsers();
                         this.successMessage = 'Administrador creado exitosamente';
                         setTimeout(() => this.successMessage = null, 5000);
@@ -422,24 +681,43 @@ export default {
                     // Mostrar errores de validación
                     if (result.errors) {
                         const errorMessages = Object.values(result.errors).flat();
-                        this.modalError = errorMessages.join('. ');
+                        this.adminModalError = errorMessages.join('. ');
                     } else {
-                        this.modalError = result.error || 'Error al crear el administrador';
+                        this.adminModalError = result.error || 'Error al crear el administrador';
                     }
                 }
             } catch (err) {
                 console.error('Error creating admin:', err);
-                this.modalError = 'Error de conexión al crear el administrador';
+                this.adminModalError = 'Error de conexión al crear el administrador';
             } finally {
                 this.creatingAdmin = false;
             }
         },
 
-        // Cerrar modal
-        closeModal() {
+        // Cerrar modal de usuario
+        closeUserModal() {
+            this.showCreateUserModal = false;
+            this.userModalError = null;
+            this.userModalSuccess = null;
+
+            // Resetear formulario
+            this.userData = {
+                name: '',
+                apellidos: '',
+                email: '',
+                dpi: '',
+                fecha_nacimiento: '',
+                telefono: '',
+                password: '',
+                foto: null
+            };
+        },
+
+        // Cerrar modal de admin
+        closeAdminModal() {
             this.showCreateAdminModal = false;
-            this.modalError = null;
-            this.modalSuccess = null;
+            this.adminModalError = null;
+            this.adminModalSuccess = null;
 
             // Resetear formulario
             this.adminData = {
@@ -484,7 +762,6 @@ export default {
     }
 }
 </script>
-
 <style scoped>
 .users-management {
     padding: 20px;
@@ -506,6 +783,12 @@ export default {
     margin: 0;
     font-size: 2rem;
     font-weight: bold;
+}
+
+.header-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 .search-section {
@@ -553,6 +836,16 @@ export default {
 
 .btn-primary:hover:not(:disabled) {
     background: linear-gradient(135deg, #764ba2, #667eea);
+    transform: translateY(-2px);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+.btn-success:hover:not(:disabled) {
+    background: linear-gradient(135deg, #20c997, #28a745);
     transform: translateY(-2px);
 }
 
@@ -776,6 +1069,7 @@ export default {
     background-color: rgba(255, 255, 255, 0.2);
 }
 
+.user-form,
 .admin-form {
     padding: 20px;
 }
@@ -884,6 +1178,11 @@ export default {
     .page-title {
         font-size: 1.5rem;
         text-align: center;
+        margin-bottom: 15px;
+    }
+
+    .header-buttons {
+        justify-content: center;
     }
 
     .search-container {
@@ -907,4 +1206,5 @@ export default {
     .modal-footer .btn {
         width: 100%;
     }
-}</style>
+}
+</style>
