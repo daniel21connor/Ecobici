@@ -1,171 +1,222 @@
 <template>
-    <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 px-4 py-8">
-        <!-- Partículas de fondo decorativas -->
-        <div class="absolute inset-0 overflow-hidden pointer-events-none">
-            <div class="absolute top-1/4 left-1/4 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse"></div>
-            <div class="absolute top-1/3 right-1/4 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse animation-delay-2000"></div>
-            <div class="absolute bottom-1/4 left-1/3 w-72 h-72 bg-indigo-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse animation-delay-4000"></div>
-        </div>
-
-        <div class="max-w-md w-full relative">
-            <!-- Contenedor principal con glassmorphism -->
-            <div class="bg-white/70 backdrop-blur-lg p-8 rounded-2xl shadow-xl border border-white/20 transition-all duration-500 hover:shadow-2xl">
-                <!-- Header con icono -->
-                <div class="text-center mb-8">
-                    <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full mb-4 shadow-lg">
-                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path v-if="!isRegistering" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                        </svg>
+    <div class="container">
+        <div class="auth-wrapper">
+            <transition name="slide" mode="out-in">
+                <!-- PANTALLA DE LOGIN -->
+                <div v-if="currentView === 'login'" key="login" class="auth-card">
+                    <div class="logo-container">
+                        <h1 class="text-primary">Auroracicleta</h1>
                     </div>
-                    <h2 class="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-                        {{ isRegistering ? 'Registro' : 'Iniciar Sesión' }}
-                    </h2>
-                </div>
+                    <h3 class="text-center">Login</h3>
 
-                <!-- Formulario con transiciones -->
-                <form @submit.prevent="isRegistering ? register() : login()" class="space-y-6">
-                    <!-- Campo nombre con transición -->
-                    <transition
-                        enter-active-class="transition-all duration-500 ease-out"
-                        enter-from-class="opacity-0 transform -translate-y-4"
-                        enter-to-class="opacity-100 transform translate-y-0"
-                        leave-active-class="transition-all duration-300 ease-in"
-                        leave-from-class="opacity-100 transform translate-y-0"
-                        leave-to-class="opacity-0 transform -translate-y-4"
-                    >
-                        <div v-if="isRegistering">
+                    <!-- Mensaje de bloqueo -->
+                    <div v-if="isBlocked" class="alert alert-danger">
+                        <div class="blocked-message">
+                            <i class="block-icon">🚫</i>
+                            <h4>Cuenta temporalmente bloqueada</h4>
+                            <p>Demasiados intentos fallidos.</p>
+                            <div class="countdown">
+                                Podrá intentar nuevamente en: <strong>{{ formatTime(timeLeft) }}</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form @submit.prevent="login" :class="{ 'form-disabled': isBlocked }">
+                        <div class="form-group">
+                            <label for="email">Correo</label>
                             <input
-                                v-model="form.name"
-                                type="text"
-                                placeholder="Nombre completo"
-                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all duration-300 bg-white/80 backdrop-blur-sm"
+                                type="email"
+                                id="email"
+                                v-model="email"
+                                class="form-control custom-input"
+                                placeholder="Ingrese su correo"
+                                :disabled="isBlocked || loading"
                                 required
-                            >
+                            />
                         </div>
-                    </transition>
-
-                    <!-- Campo email -->
-                    <div>
-                        <input
-                            v-model="form.email"
-                            type="email"
-                            placeholder="Email"
-                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all duration-300 bg-white/80 backdrop-blur-sm"
-                            required
-                        >
-                    </div>
-
-                    <!-- Campo contraseña -->
-                    <div>
-                        <input
-                            v-model="form.password"
-                            type="password"
-                            placeholder="Contraseña"
-                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all duration-300 bg-white/80 backdrop-blur-sm"
-                            required
-                        >
-                    </div>
-
-                    <!-- Campo rol con transición -->
-                    <transition
-                        enter-active-class="transition-all duration-500 ease-out"
-                        enter-from-class="opacity-0 transform -translate-y-4"
-                        enter-to-class="opacity-100 transform translate-y-0"
-                        leave-active-class="transition-all duration-300 ease-in"
-                        leave-from-class="opacity-100 transform translate-y-0"
-                        leave-to-class="opacity-0 transform -translate-y-4"
-                    >
-                        <div v-if="isRegistering">
-                            <select
-                                v-model="form.role"
-                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all duration-300 bg-white/80 backdrop-blur-sm appearance-none cursor-pointer"
-                            >
-                                <option value="user">Usuario</option>
-                                <option value="admin">Administrador</option>
-                            </select>
+                        <div class="form-group">
+                            <label for="password">Contraseña</label>
+                            <input
+                                type="password"
+                                id="password"
+                                v-model="password"
+                                class="form-control custom-input"
+                                placeholder="Ingrese su contraseña"
+                                :disabled="isBlocked || loading"
+                                required
+                            />
                         </div>
-                    </transition>
 
-                    <!-- CAPTCHA Matemático (solo para login) -->
-                    <transition
-                        enter-active-class="transition-all duration-500 ease-out"
-                        enter-from-class="opacity-0 transform -translate-y-4"
-                        enter-to-class="opacity-100 transform translate-y-0"
-                        leave-active-class="transition-all duration-300 ease-in"
-                        leave-from-class="opacity-100 transform translate-y-0"
-                        leave-to-class="opacity-0 transform -translate-y-4"
-                    >
-                        <div v-if="!isRegistering" class="space-y-2">
-                            <label class="text-sm font-medium text-gray-700">Verificación de seguridad</label>
-                            <div class="flex items-center space-x-3 p-4 bg-gray-50/80 rounded-xl border-2 border-gray-200">
-                                <span class="text-lg font-bold text-gray-800 min-w-[80px]">{{ mathQuestion }}</span>
+                        <!-- CAPTCHA Matemático Simple -->
+                        <div class="form-group captcha-container" v-if="!isBlocked">
+                            <label>Verificación de seguridad:</label>
+                            <div class="math-captcha">
+                                <span class="captcha-question">{{ mathQuestion }}</span>
                                 <input
-                                    v-model="captchaAnswer"
                                     type="number"
-                                    placeholder="?"
-                                    class="flex-1 px-3 py-2 text-center border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all duration-300"
+                                    v-model="captchaAnswer"
+                                    class="form-control custom-input captcha-input"
+                                    placeholder="Resultado"
+                                    :disabled="loading"
                                     required
-                                >
-                                <button
-                                    type="button"
-                                    @click="generateMathCaptcha"
-                                    class="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors duration-200"
-                                    title="Generar nueva pregunta"
-                                >
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                    </svg>
+                                />
+                                <button type="button" @click="generateMathCaptcha" class="refresh-captcha" :disabled="loading">
+                                    🔄
                                 </button>
                             </div>
                         </div>
-                    </transition>
 
-                    <!-- Botón principal -->
-                    <button
-                        type="submit"
-                        class="w-full relative overflow-hidden bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-3 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 group"
-                    >
-                        <span class="relative z-10">
-                            {{ isRegistering ? 'Registrarse' : 'Iniciar Sesión' }}
-                        </span>
-                        <!-- Efecto hover -->
-                        <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-700 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-                    </button>
-                </form>
+                        <!-- Contador de intentos -->
+                        <div v-if="attemptsLeft < 3 && attemptsLeft > 0" class="attempts-warning">
+                            ⚠️ Le quedan <strong>{{ attemptsLeft }}</strong> intento(s)
+                        </div>
 
-                <!-- Toggle entre login/registro -->
-                <div class="text-center mt-6 pt-4 border-t border-gray-200">
-                    <button
-                        @click="isRegistering = !isRegistering; generateMathCaptcha();"
-                        class="group relative text-gray-600 hover:text-blue-600 transition-colors duration-300 font-medium"
-                    >
-                        <span class="relative z-10">
-                            {{ isRegistering ? '¿Ya tienes cuenta? Iniciar Sesión' : '¿No tienes cuenta? Registrarse' }}
-                        </span>
-                        <span class="absolute inset-x-0 bottom-0 h-0.5 bg-blue-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
-                    </button>
+                        <button type="submit" class="btn custom-btn my-2" :disabled="loading || isBlocked">
+                            <span v-if="loading">Cargando...</span>
+                            <span v-else-if="isBlocked">Bloqueado</span>
+                            <span v-else>Login</span>
+                        </button>
+
+                        <!-- Enlace para registro -->
+                        <div class="text-center mt-3">
+                            <button type="button" @click="showRegister" class="link-button" :disabled="loading">
+                                ¿No tienes cuenta? Regístrate aquí
+                            </button>
+                        </div>
+                    </form>
+                    <p v-if="error" class="text-danger mt-2">{{ error }}</p>
                 </div>
 
-                <!-- Mensaje de error con animación -->
-                <transition
-                    enter-active-class="transition-all duration-300 ease-out"
-                    enter-from-class="opacity-0 transform translate-y-2"
-                    enter-to-class="opacity-100 transform translate-y-0"
-                    leave-active-class="transition-all duration-200 ease-in"
-                    leave-from-class="opacity-100 transform translate-y-0"
-                    leave-to-class="opacity-0 transform translate-y-2"
-                >
-                    <div v-if="error" class="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl">
-                        <div class="flex items-center">
-                            <svg class="h-4 w-4 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <p class="text-red-700 text-sm">{{ error }}</p>
-                        </div>
+                <!-- PANTALLA DE REGISTRO -->
+                <div v-else-if="currentView === 'register'" key="register" class="auth-card">
+                    <div class="logo-container">
+                        <h1 class="text-primary">Auroracicleta</h1>
                     </div>
-                </transition>
-            </div>
+                    <h3 class="text-center">Crear Cuenta</h3>
+
+                    <form @submit.prevent="register" class="register-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="name">Nombre *</label>
+                                <input
+                                    type="text"
+                                    id="name"
+                                    v-model="registerData.name"
+                                    class="form-control custom-input"
+                                    placeholder="Ingrese su nombre"
+                                    :disabled="loading"
+                                    required
+                                />
+                            </div>
+                            <div class="form-group">
+                                <label for="apellidos">Apellidos *</label>
+                                <input
+                                    type="text"
+                                    id="apellidos"
+                                    v-model="registerData.apellidos"
+                                    class="form-control custom-input"
+                                    placeholder="Ingrese sus apellidos"
+                                    :disabled="loading"
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="register-email">Correo *</label>
+                            <input
+                                type="email"
+                                id="register-email"
+                                v-model="registerData.email"
+                                class="form-control custom-input"
+                                placeholder="correo@ejemplo.com"
+                                :disabled="loading"
+                                required
+                            />
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="dpi">DPI *</label>
+                                <input
+                                    type="text"
+                                    id="dpi"
+                                    v-model="registerData.dpi"
+                                    class="form-control custom-input"
+                                    placeholder="1234567890123"
+                                    maxlength="13"
+                                    pattern="[0-9]{13}"
+                                    :disabled="loading"
+                                    required
+                                />
+                            </div>
+                            <div class="form-group">
+                                <label for="fecha_nacimiento">Fecha de Nacimiento *</label>
+                                <input
+                                    type="date"
+                                    id="fecha_nacimiento"
+                                    v-model="registerData.fecha_nacimiento"
+                                    class="form-control custom-input"
+                                    :disabled="loading"
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="telefono">Teléfono</label>
+                            <input
+                                type="tel"
+                                id="telefono"
+                                v-model="registerData.telefono"
+                                class="form-control custom-input"
+                                placeholder="+502 1234-5678"
+                                :disabled="loading"
+                            />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="register-password">Contraseña *</label>
+                            <input
+                                type="password"
+                                id="register-password"
+                                v-model="registerData.password"
+                                class="form-control custom-input"
+                                placeholder="Mínimo 6 caracteres"
+                                :disabled="loading"
+                                required
+                            />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="foto">Foto de Perfil</label>
+                            <input
+                                type="file"
+                                id="foto"
+                                @change="handleFileUpload"
+                                class="form-control custom-input file-input"
+                                accept="image/jpeg,image/png,image/jpg,image/gif"
+                                :disabled="loading"
+                            />
+                            <small class="form-text">Opcional. Máximo 2MB. Formatos: JPG, PNG, GIF</small>
+                        </div>
+
+                        <button type="submit" class="btn custom-btn my-2" :disabled="loading">
+                            <span v-if="loading">Creando cuenta...</span>
+                            <span v-else>Crear Cuenta</span>
+                        </button>
+
+                        <div class="text-center mt-3">
+                            <button type="button" @click="showLogin" class="link-button" :disabled="loading">
+                                ← Ya tengo cuenta
+                            </button>
+                        </div>
+                    </form>
+
+                    <p v-if="error" class="text-danger mt-2">{{ error }}</p>
+                    <p v-if="successMessage" class="text-success mt-2">{{ successMessage }}</p>
+                </div>
+            </transition>
         </div>
     </div>
 </template>
@@ -174,25 +225,152 @@
 export default {
     data() {
         return {
-            isRegistering: false,
-            form: {
+            currentView: 'login', // 'login' o 'register'
+
+            // Login data
+            email: "",
+            password: "",
+            mathQuestion: "",
+            captchaAnswer: "",
+            correctAnswer: 0,
+            attemptsLeft: 3,
+            isBlocked: false,
+            timeLeft: 0,
+            countdownInterval: null,
+
+            // Register data
+            registerData: {
                 name: '',
+                apellidos: '',
                 email: '',
+                dpi: '',
+                fecha_nacimiento: '',
+                telefono: '',
                 password: '',
-                role: 'user'
+                foto: null
             },
-            error: '',
-            // CAPTCHA
-            mathQuestion: '',
-            captchaAnswer: '',
-            correctAnswer: 0
-        }
+
+            // Common data
+            error: null,
+            successMessage: null,
+            loading: false
+        };
     },
     mounted() {
         this.generateMathCaptcha();
+        this.checkLoginStatus();
+    },
+    beforeUnmount() {
+        if (this.countdownInterval) {
+            clearInterval(this.countdownInterval);
+        }
     },
     methods: {
-        // Generar CAPTCHA matemático
+        // ===== NAVEGACIÓN =====
+        showRegister() {
+            this.currentView = 'register';
+            this.clearMessages();
+        },
+
+        showLogin() {
+            this.currentView = 'login';
+            this.clearMessages();
+        },
+
+        clearMessages() {
+            this.error = null;
+            this.successMessage = null;
+        },
+
+        // ===== GESTIÓN DE ARCHIVOS =====
+        handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                // Validar tamaño (2MB max)
+                if (file.size > 2 * 1024 * 1024) {
+                    this.error = 'La imagen no debe superar los 2MB';
+                    event.target.value = '';
+                    return;
+                }
+
+                // Validar tipo
+                const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif'];
+                if (!allowedTypes.includes(file.type)) {
+                    this.error = 'Formato no válido. Use JPG, PNG o GIF';
+                    event.target.value = '';
+                    return;
+                }
+
+                this.registerData.foto = file;
+                this.error = null;
+            }
+        },
+
+        // ===== CSRF TOKEN =====
+        async getCSRFToken() {
+            try {
+                const response = await fetch('/sanctum/csrf-cookie');
+                return response.ok;
+            } catch (error) {
+                console.error('Error obteniendo CSRF token:', error);
+                return false;
+            }
+        },
+
+        // ===== MÉTODOS DE LOGIN =====
+        async checkLoginStatus() {
+            // Simular estado de intentos (en una app real esto vendría del servidor)
+            const storedAttempts = localStorage.getItem('login_attempts');
+            const lastAttempt = localStorage.getItem('last_failed_attempt');
+
+            if (storedAttempts && lastAttempt) {
+                const attempts = parseInt(storedAttempts);
+                const timeDiff = Date.now() - parseInt(lastAttempt);
+                const cooldownTime = 2 * 60 * 1000; // 2 minutos
+
+                if (attempts >= 3 && timeDiff < cooldownTime) {
+                    this.attemptsLeft = 0;
+                    this.startCountdown(Math.ceil((cooldownTime - timeDiff) / 1000));
+                } else if (timeDiff >= cooldownTime) {
+                    // Reset attempts after cooldown
+                    localStorage.removeItem('login_attempts');
+                    localStorage.removeItem('last_failed_attempt');
+                    this.attemptsLeft = 3;
+                } else {
+                    this.attemptsLeft = Math.max(0, 3 - attempts);
+                }
+            }
+        },
+
+        startCountdown(seconds) {
+            this.timeLeft = seconds;
+            this.isBlocked = true;
+
+            if (this.countdownInterval) {
+                clearInterval(this.countdownInterval);
+            }
+
+            this.countdownInterval = setInterval(() => {
+                this.timeLeft--;
+
+                if (this.timeLeft <= 0) {
+                    clearInterval(this.countdownInterval);
+                    this.isBlocked = false;
+                    this.attemptsLeft = 3;
+                    this.error = null;
+                    localStorage.removeItem('login_attempts');
+                    localStorage.removeItem('last_failed_attempt');
+                    this.generateMathCaptcha();
+                }
+            }, 1000);
+        },
+
+        formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${minutes}:${secs.toString().padStart(2, '0')}`;
+        },
+
         generateMathCaptcha() {
             const num1 = Math.floor(Math.random() * 10) + 1;
             const num2 = Math.floor(Math.random() * 10) + 1;
@@ -213,46 +391,156 @@ export default {
                     break;
             }
 
-            this.captchaAnswer = '';
+            this.captchaAnswer = "";
         },
 
-        // Validar CAPTCHA
         validateCaptcha() {
             return parseInt(this.captchaAnswer) === this.correctAnswer;
         },
 
         async login() {
-            // Validar CAPTCHA solo en login
+            if (this.isBlocked) {
+                return;
+            }
+
+            // Validar CAPTCHA antes de enviar
             if (!this.validateCaptcha()) {
                 this.error = 'Respuesta del CAPTCHA incorrecta.';
                 this.generateMathCaptcha();
                 return;
             }
 
+            this.loading = true;
+            this.error = null;
+
             try {
-                const response = await axios.post('/login', {
-                    email: this.form.email,
-                    password: this.form.password
+                // Obtener CSRF token
+                await this.getCSRFToken();
+
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({
+                        email: this.email,
+                        password: this.password
+                    })
                 });
 
-                if (response.data.success) {
-                    window.location.href = '/dashboard';
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    // Login exitoso
+                    localStorage.removeItem('login_attempts');
+                    localStorage.removeItem('last_failed_attempt');
+
+                    // Redirigir según el rol
+                    if (result.role === 'admin') {
+                        window.location.href = '/admin/dashboard';
+                    } else {
+                        window.location.href = '/dashboard';
+                    }
+                } else {
+                    // Login fallido
+                    this.error = result.message || 'Credenciales incorrectas';
+
+                    // Actualizar contador de intentos
+                    const currentAttempts = parseInt(localStorage.getItem('login_attempts') || '0') + 1;
+                    localStorage.setItem('login_attempts', currentAttempts.toString());
+                    localStorage.setItem('last_failed_attempt', Date.now().toString());
+
+                    this.attemptsLeft = Math.max(0, 3 - currentAttempts);
+
+                    if (currentAttempts >= 3) {
+                        this.startCountdown(120); // 2 minutos
+                    }
+
+                    this.generateMathCaptcha();
                 }
-            } catch (error) {
-                this.error = 'Credenciales incorrectas';
+            } catch (err) {
+                console.error("Error de conexión:", err);
+                this.error = "Error al intentar iniciar sesión. Intente nuevamente.";
                 this.generateMathCaptcha();
+            } finally {
+                this.loading = false;
             }
         },
 
+        // ===== REGISTRO =====
         async register() {
-            try {
-                const response = await axios.post('/register', this.form);
+            this.loading = true;
+            this.error = null;
+            this.successMessage = null;
 
-                if (response.data.success) {
-                    window.location.href = '/dashboard';
+            try {
+                // Obtener CSRF token
+                await this.getCSRFToken();
+
+                // Crear FormData para manejar archivos
+                const formData = new FormData();
+                formData.append('name', this.registerData.name);
+                formData.append('apellidos', this.registerData.apellidos);
+                formData.append('email', this.registerData.email);
+                formData.append('dpi', this.registerData.dpi);
+                formData.append('fecha_nacimiento', this.registerData.fecha_nacimiento);
+                formData.append('telefono', this.registerData.telefono || '');
+                formData.append('password', this.registerData.password);
+
+                if (this.registerData.foto) {
+                    formData.append('foto', this.registerData.foto);
                 }
-            } catch (error) {
-                this.error = 'Error al registrar usuario';
+
+                const response = await fetch('/register', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    this.successMessage = 'Cuenta creada exitosamente. Redirigiendo...';
+
+                    // Limpiar formulario
+                    this.registerData = {
+                        name: '',
+                        apellidos: '',
+                        email: '',
+                        dpi: '',
+                        fecha_nacimiento: '',
+                        telefono: '',
+                        password: '',
+                        foto: null
+                    };
+
+                    // Redirigir después de 2 segundos
+                    setTimeout(() => {
+                        if (result.role === 'admin') {
+                            window.location.href = '/admin/dashboard';
+                        } else {
+                            window.location.href = '/dashboard';
+                        }
+                    }, 2000);
+                } else {
+                    // Mostrar errores de validación
+                    if (result.errors) {
+                        const errorMessages = Object.values(result.errors).flat();
+                        this.error = errorMessages.join('. ');
+                    } else {
+                        this.error = result.message || 'Error al crear la cuenta';
+                    }
+                }
+            } catch (err) {
+                console.error("Error al registrar:", err);
+                this.error = "Error al crear la cuenta. Intente nuevamente.";
+            } finally {
+                this.loading = false;
             }
         }
     }
@@ -260,45 +548,369 @@ export default {
 </script>
 
 <style scoped>
-.animation-delay-2000 {
-    animation-delay: 2s;
+/* Reset global para eliminar márgenes y paddings por defecto */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
-.animation-delay-4000 {
-    animation-delay: 4s;
+/* Asegurar que html y body ocupen toda la pantalla */
+html, body {
+    height: 100%;
+    width: 100%;
+    overflow-x: hidden;
 }
 
-/* Custom scrollbar para select */
-select::-webkit-scrollbar {
-    width: 8px;
+/* Contenedor padre que asegura cobertura completa */
+#app {
+    height: 100%;
+    width: 100%;
 }
 
-select::-webkit-scrollbar-track {
-    background: #f1f1f1;
+.container {
+    background: linear-gradient(to right, #667eea, #764ba2);
+    min-height: 100vh;
+    min-width: 100vw;
+    height: 100%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    box-sizing: border-box;
+}
+
+.auth-wrapper {
+    width: 450px;
+    max-width: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.auth-card {
+    width: 100%;
+    padding: 30px;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.logo-container {
+    text-align: center;
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.text-primary {
+    text-align: center;
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #764ba2;
+    margin: 0;
+}
+
+/* Formularios */
+.register-form {
+    max-height: 60vh;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #333;
+    font-weight: 500;
+}
+
+.form-text {
+    color: #666;
+    font-size: 12px;
+    margin-top: 5px;
+    display: block;
+}
+
+/* Formulario deshabilitado */
+.form-disabled {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Alerta de bloqueo */
+.alert {
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+.blocked-message {
+    text-align: center;
+}
+
+.block-icon {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.blocked-message h4 {
+    margin: 10px 0;
+    color: #721c24;
+}
+
+.countdown {
+    margin-top: 15px;
+    font-size: 16px;
+}
+
+.countdown strong {
+    color: #dc3545;
+    font-size: 18px;
+}
+
+/* Advertencia de intentos */
+.attempts-warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    color: #856404;
+    padding: 10px;
+    border-radius: 6px;
+    text-align: center;
+    margin-bottom: 15px;
+    font-size: 14px;
+}
+
+.custom-input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #764ba2;
+    border-radius: 8px;
+    font-size: 16px;
+    outline: none;
+    transition: 0.3s;
+}
+
+.custom-input:focus:not(:disabled) {
+    border-color: #667eea;
+    box-shadow: 0 0 5px rgba(102, 126, 234, 0.5);
+}
+
+.custom-input:disabled {
+    background-color: #f8f9fa;
+    cursor: not-allowed;
+}
+
+.file-input {
+    padding: 8px !important;
+}
+
+/* Estilos para CAPTCHA matemático */
+.captcha-container {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border: 2px solid #764ba2;
+}
+
+.math-captcha {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+}
+
+.captcha-question {
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+    min-width: 100px;
+    text-align: center;
+}
+
+.captcha-input {
+    max-width: 100px;
+    text-align: center;
+    margin: 0;
+}
+
+.refresh-captcha {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 5px;
     border-radius: 4px;
+    transition: background-color 0.3s;
 }
 
-select::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 4px;
+.refresh-captcha:hover:not(:disabled) {
+    background-color: rgba(118, 75, 162, 0.1);
 }
 
-select::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
+.refresh-captcha:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
-/* Estilos responsive */
+.custom-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.custom-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #764ba2, #667eea);
+    transform: scale(1.05);
+}
+
+.custom-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    background: #cccccc !important;
+}
+
+/* Botón tipo enlace */
+.link-button {
+    background: none;
+    border: none;
+    color: #764ba2;
+    font-size: 14px;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color 0.3s;
+    padding: 0;
+}
+
+.link-button:hover:not(:disabled) {
+    color: #667eea;
+}
+
+.link-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.text-danger {
+    color: #dc3545;
+    font-size: 14px;
+    text-align: center;
+}
+
+.text-success {
+    color: #28a745;
+    font-size: 14px;
+    text-align: center;
+}
+
+.text-center {
+    text-align: center;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.my-2 {
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+.mt-2 {
+    margin-top: 10px;
+}
+
+.mt-3 {
+    margin-top: 15px;
+}
+
+/* Transiciones */
+.slide-enter-active, .slide-leave-active {
+    transition: transform 0.6s ease-in-out, opacity 0.5s;
+}
+.slide-enter-from {
+    transform: translateX(100%);
+    opacity: 0;
+}
+.slide-leave-to {
+    transform: translateX(-100%);
+    opacity: 0;
+}
+
+/* Responsive */
 @media (max-width: 480px) {
-    .bg-gradient-to-br {
-        padding: 1rem;
+    .container {
+        padding: 10px;
     }
 
-    .bg-white\/70 {
-        padding: 1.5rem;
+    .auth-wrapper {
+        width: 100%;
     }
 
-    .text-2xl {
-        font-size: 1.5rem;
+    .auth-card {
+        padding: 20px;
+    }
+
+    .text-primary {
+        font-size: 2rem;
+    }
+
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .math-captcha {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .captcha-input {
+        max-width: 150px;
+    }
+
+    .blocked-message h4 {
+        font-size: 1.2rem;
+    }
+
+    .countdown {
+        font-size: 14px;
     }
 }
 </style>
