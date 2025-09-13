@@ -37,7 +37,9 @@ app.component('Routes', Routes);
 import bicicletas from "@/components/bicicletas.vue";
 import Bicicletas from "@/components/bicicletas.vue";
 app.component('bicicletas', Bicicletas);
-
+import damageReports from "@/components/DamageReports.vue";
+import DamageReports from "@/components/DamageReports.vue";
+app.component('damageReports', DamageReports);
 
 
 /**
