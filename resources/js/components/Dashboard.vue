@@ -76,9 +76,9 @@
                         <!-- Bicicletas -->
                         <li>
                             <a
-                                @click="setActiveSection('bikes')"
+                                @click="setActiveSection('bicicletas')"
                                 class="nav-item"
-                                :class="{ 'nav-active': activeSection === 'bikes' }"
+                                :class="{ 'nav-active': activeSection === 'bicicletas' }"
                             >
                                 <span class="nav-icon">🚲</span>
                                 <span v-if="sidebarOpen" class="nav-text">Mis Bicicletas</span>
@@ -366,7 +366,7 @@
                                     <div class="service-icon">🚲</div>
                                     <h3>Mis Bicicletas</h3>
                                     <p>Gestionar mis bicicletas</p>
-                                    <button @click="setActiveSection('bikes')"
+                                    <button @click="setActiveSection('bicicletas')"
                                             class="service-btn"
                                             :disabled="!hasActiveMembership && !isAdmin">
                                         Ver Bicicletas
@@ -480,15 +480,10 @@
                 </div>
 
                 <!-- Bikes Section -->
-                <div v-else-if="activeSection === 'bikes'" class="section">
-                    <div class="card">
-                        <div class="card-content">
-                            <h2 class="section-title">Mis Bicicletas</h2>
-                            <div class="coming-soon">
-                                <p>🚧 Esta sección está en desarrollo</p>
-                                <p class="text-sm">Pronto estará disponible</p>
-                            </div>
-                        </div>
+                <!-- Bikes Section -->
+                <div v-else-if="activeSection === 'bicicletas'" class="section">
+                    <div class="bikes-container">
+                        <bicicletas ref="bicicletasComponent" />
                     </div>
                 </div>
 
@@ -547,6 +542,7 @@ import MembershipPayment from './MembershipPayment.vue';
 import Estacion from './Estacion.vue';
 import UserManagement from "@/components/UserManagement.vue";
 import Routes from "@/components/Routes.vue";
+import bicicletas from "@/components/bicicletas.vue";
 
 export default {
     components: {
@@ -554,6 +550,7 @@ export default {
         Estacion,
         UserManagement,
         Routes,
+        bicicletas,
     },
 
     data() {
@@ -713,7 +710,7 @@ export default {
                 'stations': 'Estaciones',
                 'profile': 'Mi Perfil',
                 'routes': 'Mis Rutas',
-                'bikes': 'Mis Bicicletas',
+                'bicicletas': 'Mis Bicicletas',
                 'reports': 'Reportes',
                 'users': 'Gestión de Usuarios',
                 'settings': 'Configuración'

@@ -102,25 +102,6 @@ Route::middleware([ 'auth'])->prefix('api')->group(function () {
 
 
 // Rutas de Bicicletas
-    Route::middleware(['auth'])->group(function () {
-        Route::get('/bikes', [BikeController::class, 'index'])->name('bikes.index');
-        Route::get('/bikes/data', [BikeController::class, 'getData'])->name('bikes.data');
-
-        // Solo admins pueden crear, editar y eliminar
-        Route::middleware(['admin'])->group(function () {
-            Route::get('/bikes/create', [BikeController::class, 'create'])->name('bikes.create');
-            Route::post('/bikes', [BikeController::class, 'store'])->name('bikes.store');
-            Route::get('/bikes/{bike}/edit', [BikeController::class, 'edit'])->name('bikes.edit');
-            Route::put('/bikes/{bike}', [BikeController::class, 'update'])->name('bikes.update');
-            Route::delete('/bikes/{bike}', [BikeController::class, 'destroy'])->name('bikes.destroy');
-            Route::patch('/bikes/{bike}/toggle-status', [BikeController::class, 'toggleStatus'])->name('bikes.toggle-status');
-            Route::patch('/bikes/{bike}/move-to-station', [BikeController::class, 'moveToStation'])->name('bikes.move-to-station');
-            Route::patch('/bikes/{bike}/update-battery', [BikeController::class, 'updateBattery'])->name('bikes.update-battery');
-        });
-
-        Route::get('/bikes/{bike}', [BikeController::class, 'show'])->name('bikes.show');
-
-    });
 
     // ===============================
     // USO DE BICICLETAS
@@ -200,4 +181,26 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/stations/{station}', [StationController::class, 'destroy'])->name('stations.destroy');
         Route::patch('/stations/{station}/toggle-status', [StationController::class, 'toggleStatus'])->name('stations.toggle-status');
     });
+
+
+
 });
+//Rutas de Bicicletas
+    Route::middleware(['auth'])->group(function () {
+        // Rutas que todos los usuarios autenticados pueden acceder
+        Route::get('/bikes', [BikeController::class, 'index'])->name('bikes.index');
+        Route::get('/bikes/data', [BikeController::class, 'getData'])->name('bikes.data');
+
+        // Rutas específicas van antes que las rutas con parámetros
+        Route::get('/bikes/create', [BikeController::class, 'create'])->name('bikes.create');
+
+        // Rutas con parámetros van al final
+        Route::get('/bikes/{bike}', [BikeController::class, 'show'])->name('bikes.show');
+        Route::get('/bikes/{bike}/edit', [BikeController::class, 'edit'])->name('bikes.edit');
+        Route::post('/bikes', [BikeController::class, 'store'])->name('bikes.store');
+        Route::put('/bikes/{bike}', [BikeController::class, 'update'])->name('bikes.update');
+        Route::delete('/bikes/{bike}', [BikeController::class, 'destroy'])->name('bikes.destroy');
+        Route::patch('/bikes/{bike}/toggle-status', [BikeController::class, 'toggleStatus'])->name('bikes.toggle-status');
+        Route::patch('/bikes/{bike}/move-to-station', [BikeController::class, 'moveToStation'])->name('bikes.move-to-station');
+        Route::patch('/bikes/{bike}/update-battery', [BikeController::class, 'updateBattery'])->name('bikes.update-battery');
+    });

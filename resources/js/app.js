@@ -34,6 +34,9 @@ import  UserManagement from './components/UserManagement.vue';
 app.component('user-management', UserManagement);
 import Routes from "@/components/Routes.vue";
 app.component('Routes', Routes);
+import bicicletas from "@/components/bicicletas.vue";
+import Bicicletas from "@/components/bicicletas.vue";
+app.component('bicicletas', Bicicletas);
 
 
 

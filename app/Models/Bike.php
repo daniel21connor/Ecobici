@@ -33,9 +33,10 @@ class Bike extends Model
     /**
      * Relación con estación
      */
+// App/Models/Bike.php
     public function station()
     {
-        return $this->belongsTo(Station::class);
+        return $this->belongsTo(Station::class, 'station_id', 'id');
     }
 
     /**
