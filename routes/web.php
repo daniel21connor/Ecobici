@@ -125,25 +125,7 @@ Route::middleware([ 'auth'])->prefix('api')->group(function () {
     });
 
     // Reportes de daño - RF-08
-    Route::prefix('damage-reports')->group(function () {
-        Route::get('/', [DamageReportController::class, 'index']);
-        Route::get('/severities', [DamageReportController::class, 'getSeverityOptions']);
-        Route::get('/statuses', [DamageReportController::class, 'getStatusOptions']);
-        Route::get('/{damageReport}', [DamageReportController::class, 'show']);
-        Route::post('/', [DamageReportController::class, 'store']);
 
-        Route::post('/{damageReport}/photos', [DamageReportController::class, 'addPhoto']);
-        Route::delete('/{damageReport}/photos', [DamageReportController::class, 'removePhoto']);
-
-        // Solo para administradores
-        Route::middleware('admin')->group(function () {
-            Route::put('/{damageReport}', [DamageReportController::class, 'update']);
-            Route::post('/{damageReport}/review', [DamageReportController::class, 'markAsInReview']);
-            Route::post('/{damageReport}/repair', [DamageReportController::class, 'markAsInRepair']);
-            Route::post('/{damageReport}/resolve', [DamageReportController::class, 'resolve']);
-            Route::get('/statistics', [DamageReportController::class, 'getStatistics']);
-        });
-    });
 });
 
 // Rutas públicas (sin autenticación)
@@ -186,21 +168,17 @@ Route::middleware(['auth'])->group(function () {
 
 });
 //Rutas de Bicicletas
-    Route::middleware(['auth'])->group(function () {
-        // Rutas que todos los usuarios autenticados pueden acceder
-        Route::get('/bikes', [BikeController::class, 'index'])->name('bikes.index');
-        Route::get('/bikes/data', [BikeController::class, 'getData'])->name('bikes.data');
+Route::middleware(['auth'])->group(function () {
+    // Primero las rutas fijas
+    Route::get('damage-reports/bikes', [DamageReportController::class, 'getAvailableBikes'])->name('damage-reports.bikes');
+    Route::get('damage-reports/statistics', [DamageReportController::class, 'statistics'])->name('damage-reports.statistics');
 
-        // Rutas específicas van antes que las rutas con parámetros
-        Route::get('/bikes/create', [BikeController::class, 'create'])->name('bikes.create');
+    // Luego las rutas generales
+    Route::get('damage-reports', [DamageReportController::class, 'index'])->name('damage-reports.index');
+    Route::post('damage-reports', [DamageReportController::class, 'store'])->name('damage-reports.store');
+    Route::get('damage-reports/{id}', [DamageReportController::class, 'show'])->name('damage-reports.show');
+    Route::delete('damage-reports/{id}', [DamageReportController::class, 'destroy'])->name('damage-reports.destroy');
+    Route::put('damage-reports/{id}/status', [DamageReportController::class, 'updateStatus'])->name('damage-reports.update-status');
+});
 
-        // Rutas con parámetros van al final
-        Route::get('/bikes/{bike}', [BikeController::class, 'show'])->name('bikes.show');
-        Route::get('/bikes/{bike}/edit', [BikeController::class, 'edit'])->name('bikes.edit');
-        Route::post('/bikes', [BikeController::class, 'store'])->name('bikes.store');
-        Route::put('/bikes/{bike}', [BikeController::class, 'update'])->name('bikes.update');
-        Route::delete('/bikes/{bike}', [BikeController::class, 'destroy'])->name('bikes.destroy');
-        Route::patch('/bikes/{bike}/toggle-status', [BikeController::class, 'toggleStatus'])->name('bikes.toggle-status');
-        Route::patch('/bikes/{bike}/move-to-station', [BikeController::class, 'moveToStation'])->name('bikes.move-to-station');
-        Route::patch('/bikes/{bike}/update-battery', [BikeController::class, 'updateBattery'])->name('bikes.update-battery');
-    });
+

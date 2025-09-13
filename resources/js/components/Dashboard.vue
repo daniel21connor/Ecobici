@@ -489,14 +489,8 @@
 
                 <!-- Reports Section -->
                 <div v-else-if="activeSection === 'reports'" class="section">
-                    <div class="card">
-                        <div class="card-content">
-                            <h2 class="section-title">Reportes</h2>
-                            <div class="coming-soon">
-                                <p>🚧 Esta sección está en desarrollo</p>
-                                <p class="text-sm">Pronto estará disponible</p>
-                            </div>
-                        </div>
+                    <div class="damage-reports-container">
+                        <damage-reports ref="damageReportsComponent" />
                     </div>
                 </div>
 
@@ -543,6 +537,7 @@ import Estacion from './Estacion.vue';
 import UserManagement from "@/components/UserManagement.vue";
 import Routes from "@/components/Routes.vue";
 import bicicletas from "@/components/bicicletas.vue";
+import DamageReports from '@/components/DamageReports.vue';
 
 export default {
     components: {
@@ -551,6 +546,7 @@ export default {
         UserManagement,
         Routes,
         bicicletas,
+        DamageReports,
     },
 
     data() {
@@ -711,7 +707,7 @@ export default {
                 'profile': 'Mi Perfil',
                 'routes': 'Mis Rutas',
                 'bicicletas': 'Mis Bicicletas',
-                'reports': 'Reportes',
+                'DamageReports': 'Reportes',
                 'users': 'Gestión de Usuarios',
                 'settings': 'Configuración'
             };
