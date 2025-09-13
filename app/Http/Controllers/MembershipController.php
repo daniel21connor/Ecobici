@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class MembershipController extends Controller
 {
@@ -47,118 +48,314 @@ class MembershipController extends Controller
 
     public function getCurrentMembership(Request $request)
     {
-        $user = Auth::user();
-        $membership = $user->memberships()->active()->first();
-
-        if (!$membership) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No hay membresía activa'
-            ]);
-        }
-
-        return response()->json([
-            'success' => true,
-            'membership' => [
-                'id' => $membership->id,
-                'plan_type' => $membership->plan_type,
-                'plan_info' => $membership->getPlanInfo(),
-                'status' => $membership->status,
-                'start_date' => $membership->start_date->format('Y-m-d'),
-                'end_date' => $membership->end_date->format('Y-m-d'),
-                'days_remaining' => $membership->getDaysRemaining(),
-                'features' => $membership->features
-            ]
-        ]);
-    }
-
-    public function processPayment(Request $request)
-    {
-        $request->validate([
-            'plan_type' => 'required|in:basic,premium,vip',
-            'payment_method' => 'required|in:credit_card,debit_card,paypal,bank_transfer',
-            'card_number' => 'required_if:payment_method,credit_card,debit_card|string|min:16|max:16',
-            'card_name' => 'required_if:payment_method,credit_card,debit_card|string|max:100',
-            'card_expiry' => 'required_if:payment_method,credit_card,debit_card|string',
-            'card_cvv' => 'required_if:payment_method,credit_card,debit_card|string|min:3|max:4',
-            'paypal_email' => 'required_if:payment_method,paypal|email',
-            'bank_account' => 'required_if:payment_method,bank_transfer|string'
-        ]);
-
-        $user = Auth::user();
-        $planConfig = Membership::getPlanConfig($request->plan_type);
-
-        if (!$planConfig) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Plan no válido'
-            ], 400);
-        }
-
-        // Simular proceso de pago
-        DB::beginTransaction();
-
         try {
-            // Cancelar membresía activa si existe
-            $activeMembership = $user->memberships()->active()->first();
-            if ($activeMembership) {
-                $activeMembership->cancel();
-            }
+            $user = Auth::user();
 
-            // Simular validación de pago
-            $paymentResult = $this->simulatePayment($request->all(), $planConfig['price']);
-
-            if (!$paymentResult['success']) {
-                DB::rollBack();
+            if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => $paymentResult['message']
-                ], 400);
+                    'message' => 'Usuario no autenticado'
+                ], 401);
             }
 
-            // Crear nueva membresía
-            $startDate = Carbon::now();
-            $endDate = $startDate->copy()->addMonths($planConfig['duration_months']);
+            // Usar el método del modelo User para obtener la membresía activa
+            $activeMembership = $user->activeMembership;
 
-            $membership = Membership::create([
-                'user_id' => $user->id,
-                'plan_type' => $request->plan_type,
-                'amount' => $planConfig['price'],
-                'payment_method' => $request->payment_method,
-                'card_last_four' => $this->getCardLastFour($request->card_number ?? null),
-                'transaction_id' => $paymentResult['transaction_id'],
-                'status' => 'active',
-                'start_date' => $startDate,
-                'end_date' => $endDate,
-                'features' => $planConfig['features'],
-                'payment_details' => json_encode($paymentResult['details']),
-                'activated_at' => Carbon::now()
-            ]);
+            if (!$activeMembership) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No hay membresía activa',
+                    'membership' => null
+                ]);
+            }
 
-            DB::commit();
+            // Obtener información del plan
+            $planConfig = Membership::getPlanConfig($activeMembership->plan_type);
+
+            // Calcular días restantes
+            $endDate = \Carbon\Carbon::parse($activeMembership->end_date);
+            $daysRemaining = max(0, $endDate->diffInDays(now()));
+
+            // Preparar la respuesta con toda la información necesaria
+            $membershipData = [
+                'id' => $activeMembership->id,
+                'plan_type' => $activeMembership->plan_type,
+                'status' => $activeMembership->status,
+                'start_date' => $activeMembership->start_date,
+                'end_date' => $activeMembership->end_date,
+                'days_remaining' => $daysRemaining,
+                'is_active' => $activeMembership->status === 'active' && $endDate->isFuture(),
+                'plan_info' => $planConfig,
+                'features' => $this->getPlanFeatures($activeMembership->plan_type),
+                'permissions' => $this->getUserPermissions($user)
+            ];
 
             return response()->json([
                 'success' => true,
-                'message' => 'Pago procesado exitosamente',
-                'membership' => [
-                    'id' => $membership->id,
-                    'plan_type' => $membership->plan_type,
-                    'plan_info' => $membership->getPlanInfo(),
-                    'transaction_id' => $membership->transaction_id,
-                    'status' => $membership->status,
-                    'start_date' => $membership->start_date->format('Y-m-d'),
-                    'end_date' => $membership->end_date->format('Y-m-d'),
-                    'amount' => $membership->amount
-                ]
+                'membership' => $membershipData
             ]);
 
         } catch (\Exception $e) {
-            DB::rollBack();
+            \Log::error('Error obteniendo membresía actual: ' . $e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error al procesar el pago: ' . $e->getMessage()
+                'message' => 'Error interno del servidor',
+                'error' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
+    }
+
+    /**
+     * Obtener todas las membresías del usuario
+     */
+    public function getUserMemberships(Request $request)
+    {
+        try {
+            $user = Auth::user();
+
+            $memberships = $user->memberships()
+                ->with(['user'])
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function ($membership) {
+                    $planConfig = Membership::getPlanConfig($membership->plan_type);
+                    return [
+                        'id' => $membership->id,
+                        'plan_type' => $membership->plan_type,
+                        'status' => $membership->status,
+                        'start_date' => $membership->start_date,
+                        'end_date' => $membership->end_date,
+                        'amount' => $membership->amount,
+                        'created_at' => $membership->created_at,
+                        'plan_info' => $planConfig
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'memberships' => $memberships
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error obteniendo membresías del usuario: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error interno del servidor'
+            ], 500);
+        }
+    }
+
+    /**
+     * Verificar acceso a una funcionalidad específica
+     */
+    public function checkAccess(Request $request)
+    {
+        $request->validate([
+            'feature' => 'required|string'
+        ]);
+
+        $user = Auth::user();
+        $feature = $request->input('feature');
+
+        $canAccess = $user->canAccess($feature);
+        $currentPlan = $user->getCurrentPlan();
+
+        return response()->json([
+            'success' => true,
+            'can_access' => $canAccess,
+            'current_plan' => $currentPlan,
+            'has_active_membership' => $user->hasActiveMembership()
+        ]);
+    }
+    public function processPayment(Request $request)
+    {
+        try {
+            // Debug: Ver qué datos llegan
+            \Log::info('Payment request data:', $request->all());
+
+            // Validaciones básicas primero
+            $request->validate([
+                'plan_type' => 'required|in:basic,premium,vip',
+                'payment_method' => 'required|in:credit_card,debit_card,paypal,bank_transfer',
+            ]);
+
+            // Validaciones específicas según método de pago
+            switch ($request->payment_method) {
+                case 'credit_card':
+                case 'debit_card':
+                    $request->validate([
+                        'card_number' => 'required|string|digits:16',
+                        'card_name' => 'required|string|min:2|max:100',
+                        'card_expiry' => 'required|string|regex:/^\d{2}\/\d{2}$/',
+                        'card_cvv' => 'required|string|digits_between:3,4'
+                    ], [
+                        'card_number.digits' => 'El número de tarjeta debe tener exactamente 16 dígitos',
+                        'card_expiry.regex' => 'El formato de fecha debe ser MM/AA',
+                        'card_cvv.digits_between' => 'El CVV debe tener 3 o 4 dígitos'
+                    ]);
+                    break;
+
+                case 'paypal':
+                    $request->validate([
+                        'paypal_email' => 'required|email|max:100'
+                    ]);
+                    break;
+
+                case 'bank_transfer':
+                    $request->validate([
+                        'bank_account' => 'required|string|min:10|max:20'
+                    ]);
+                    break;
+            }
+
+            $user = Auth::user();
+            $planConfig = Membership::getPlanConfig($request->plan_type);
+
+            if (!$planConfig) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Plan no válido'
+                ], 400);
+            }
+
+            // Verificar si el usuario ya tiene este plan activo
+            $activeMembership = $user->memberships()->active()->first();
+            if ($activeMembership && $activeMembership->plan_type === $request->plan_type) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ya tienes este plan activo'
+                ], 400);
+            }
+
+            // Simular proceso de pago
+            DB::beginTransaction();
+
+            try {
+                // Simular validación de pago
+                $paymentResult = $this->simulatePayment($request->all(), $planConfig['price']);
+
+                if (!$paymentResult['success']) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => $paymentResult['message']
+                    ], 400);
+                }
+
+                // Cancelar membresía activa si existe
+                if ($activeMembership) {
+                    $activeMembership->update(['status' => 'cancelled']);
+                }
+
+                // Crear nueva membresía
+                $startDate = Carbon::now();
+                $endDate = $startDate->copy()->addMonths($planConfig['duration_months'] ?? 1);
+
+                $membership = Membership::create([
+                    'user_id' => $user->id,
+                    'plan_type' => $request->plan_type,
+                    'amount' => $planConfig['price'],
+                    'payment_method' => $request->payment_method,
+                    'card_last_four' => $this->getCardLastFour($request->card_number ?? null),
+                    'transaction_id' => $paymentResult['transaction_id'],
+                    'status' => 'active',
+                    'start_date' => $startDate,
+                    'end_date' => $endDate,
+                    'features' => json_encode($planConfig['features'] ?? []),
+                    'payment_details' => json_encode($paymentResult['details']),
+                    'activated_at' => Carbon::now()
+                ]);
+
+                DB::commit();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Pago procesado exitosamente',
+                    'membership' => [
+                        'id' => $membership->id,
+                        'plan_type' => $membership->plan_type,
+                        'plan_info' => $planConfig,
+                        'transaction_id' => $membership->transaction_id,
+                        'status' => $membership->status,
+                        'start_date' => $membership->start_date->format('Y-m-d'),
+                        'end_date' => $membership->end_date->format('Y-m-d'),
+                        'amount' => $membership->amount
+                    ]
+                ]);
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                \Log::error('Payment processing error: ' . $e->getMessage());
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error interno del servidor'
+                ], 500);
+            }
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Datos de validación incorrectos',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Unexpected error in processPayment: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error inesperado'
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtener las características de un plan específico
+     */
+    private function getPlanFeatures($planType)
+    {
+        $features = [
+            'basic' => [
+                'Acceso básico al sistema',
+                'Registro de hasta 2 bicicletas',
+                'Soporte por email',
+                'Reportes básicos'
+            ],
+            'premium' => [
+                'Acceso completo al sistema',
+                'Registro de hasta 5 bicicletas',
+                'Soporte prioritario',
+                'Reportes avanzados',
+                'Notificaciones en tiempo real'
+            ],
+            'vip' => [
+                'Acceso completo al sistema',
+                'Bicicletas ilimitadas',
+                'Soporte 24/7',
+                'Reportes personalizados',
+                'Acceso a API',
+                'Características exclusivas'
+            ]
+        ];
+
+        return $features[$planType] ?? [];
+    }
+
+    /**
+     * Obtener permisos del usuario basados en su membresía
+     */
+    private function getUserPermissions($user)
+    {
+        $permissions = [
+            'can_access_reports' => $user->canAccess('advanced_reports') || $user->canAccess('basic_reports'),
+            'can_register_bikes' => $user->canRegisterMoreBikes(),
+            'bike_limit' => $user->getBikeLimit(),
+            'has_priority_support' => $user->canAccess('priority_support'),
+            'has_24_7_support' => $user->canAccess('support_24_7'),
+            'can_access_api' => $user->canAccess('api_access')
+        ];
+
+        return $permissions;
     }
 
     public function cancelMembership(Request $request)
@@ -173,7 +370,7 @@ class MembershipController extends Controller
             ], 404);
         }
 
-        $membership->cancel();
+        $membership->update(['status' => 'cancelled']);
 
         return response()->json([
             'success' => true,
@@ -191,7 +388,7 @@ class MembershipController extends Controller
                 return [
                     'id' => $membership->id,
                     'plan_type' => $membership->plan_type,
-                    'plan_info' => $membership->getPlanInfo(),
+                    'plan_info' => Membership::getPlanConfig($membership->plan_type),
                     'amount' => $membership->amount,
                     'status' => $membership->status,
                     'start_date' => $membership->start_date->format('Y-m-d'),
@@ -265,10 +462,10 @@ class MembershipController extends Controller
             }
         }
 
-        // 3. SIMULACIÓN REALISTA (85% éxito para tarjetas válidas)
+        // 3. SIMULACIÓN REALISTA (95% éxito para tarjetas válidas en desarrollo)
         $random = rand(1, 100);
 
-        if ($random > 85) {
+        if ($random > 95) { // Cambiado de 85 a 95 para más éxito en desarrollo
             $errors = [
                 'Fondos insuficientes en la tarjeta',
                 'Error temporal del banco, intente en unos minutos',
@@ -371,6 +568,6 @@ class MembershipController extends Controller
     private function getCardLastFour($cardNumber)
     {
         if (!$cardNumber) return null;
-        return substr($cardNumber, -4);
+        return substr(preg_replace('/\D/', '', $cardNumber), -4);
     }
 }

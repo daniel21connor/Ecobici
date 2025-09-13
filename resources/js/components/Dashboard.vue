@@ -64,6 +64,18 @@
                         <!-- Bicicletas (futuro módulo) -->
                         <li>
                             <a
+                                @click="setActiveSection('stations')"
+                                class="nav-item"
+                                :class="{ 'nav-active': activeSection === 'stations' }"
+                            >
+                                <span class="nav-icon">🚲</span>
+                                <span v-if="sidebarOpen" class="nav-text">Mis </span>
+                            </a>
+                        </li>
+
+                        <!-- Bicicletas (futuro módulo) -->
+                        <li>
+                            <a
                                 @click="setActiveSection('bikes')"
                                 class="nav-item"
                                 :class="{ 'nav-active': activeSection === 'bikes' }"
@@ -152,6 +164,9 @@
                             <span class="membership-badge" :class="'badge-' + currentMembership.plan_type">
                                 {{ currentMembership.plan_info.name }}
                             </span>
+                            <span class="membership-info">
+                                {{ currentMembership.days_remaining }} días restantes
+                            </span>
                         </div>
                     </div>
                     <div class="header-right">
@@ -164,6 +179,11 @@
                                     Activar
                                 </button>
                             </div>
+                            <!-- Estado de membresía activa -->
+                            <div v-else class="membership-active">
+                                <span class="active-icon">✅</span>
+                                <span class="active-text">Membresía Activa</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -173,25 +193,92 @@
             <main class="content">
                 <!-- Dashboard Section -->
                 <div v-if="activeSection === 'dashboard'" class="section">
+                    <!-- Membership Status Card -->
+                    <div class="card mb-6">
+                        <div class="card-content">
+                            <div v-if="hasActiveMembership" class="membership-welcome">
+                                <div class="welcome-header">
+                                    <div class="welcome-icon">
+                                        <span class="plan-emoji">{{ getPlanEmoji(currentMembership.plan_type) }}</span>
+                                    </div>
+                                    <div class="welcome-content">
+                                        <h2 class="welcome-title">
+                                            ¡Bienvenido a tu plan {{ currentMembership.plan_info.name }}!
+                                        </h2>
+                                        <p class="welcome-subtitle">
+                                            Tu membresía está activa hasta el {{ formatDate(currentMembership.end_date) }}
+                                        </p>
+                                    </div>
+                                    <div class="welcome-badge">
+                                        <span class="days-remaining">{{ currentMembership.days_remaining }}</span>
+                                        <span class="days-text">días</span>
+                                    </div>
+                                </div>
+
+                                <div class="membership-features">
+                                    <h3 class="features-title">Características de tu plan:</h3>
+                                    <div class="features-grid">
+                                        <div v-for="(feature, index) in currentMembership.features"
+                                             :key="index"
+                                             class="feature-item">
+                                            <span class="feature-icon">✓</span>
+                                            <span class="feature-text">{{ feature }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="membership-actions">
+                                    <button @click="setActiveSection('memberships')" class="action-btn primary">
+                                        Gestionar Membresía
+                                    </button>
+                                    <button @click="setActiveSection('profile')" class="action-btn secondary">
+                                        Ver Perfil
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Sin membresía -->
+                            <div v-else class="no-membership">
+                                <div class="no-membership-icon">🚫</div>
+                                <h2 class="no-membership-title">No tienes una membresía activa</h2>
+                                <p class="no-membership-text">
+                                    Activa una membresía para acceder a todas las funcionalidades de la plataforma
+                                </p>
+                                <button @click="setActiveSection('memberships')" class="activation-btn">
+                                    Activar Membresía
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Admin Section -->
                     <div v-if="user.role === 'admin'" class="card mb-6">
                         <div class="card-content">
                             <h2 class="section-title">Panel de Administrador</h2>
                             <div class="stats-grid">
                                 <div class="stat-card stat-blue">
-                                    <h3>Gestión de Usuarios</h3>
-                                    <p>Administrar usuarios del sistema</p>
-                                    <button @click="setActiveSection('users')" class="stat-btn">Ver Usuarios</button>
+                                    <div class="stat-icon">👥</div>
+                                    <div class="stat-content">
+                                        <h3>Gestión de Usuarios</h3>
+                                        <p>Administrar usuarios del sistema</p>
+                                        <button @click="setActiveSection('users')" class="stat-btn">Ver Usuarios</button>
+                                    </div>
                                 </div>
                                 <div class="stat-card stat-green">
-                                    <h3>Configuración</h3>
-                                    <p>Configurar el sistema</p>
-                                    <button @click="setActiveSection('settings')" class="stat-btn">Configurar</button>
+                                    <div class="stat-icon">⚙️</div>
+                                    <div class="stat-content">
+                                        <h3>Configuración</h3>
+                                        <p>Configurar el sistema</p>
+                                        <button @click="setActiveSection('settings')" class="stat-btn">Configurar</button>
+                                    </div>
                                 </div>
                                 <div class="stat-card stat-purple">
-                                    <h3>Reportes</h3>
-                                    <p>Ver reportes del sistema</p>
-                                    <button @click="setActiveSection('reports')" class="stat-btn">Ver Reportes</button>
+                                    <div class="stat-icon">📈</div>
+                                    <div class="stat-content">
+                                        <h3>Reportes</h3>
+                                        <p>Ver reportes del sistema</p>
+                                        <button @click="setActiveSection('reports')" class="stat-btn">Ver Reportes</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -201,18 +288,63 @@
                     <div class="card">
                         <div class="card-content">
                             <h2 class="section-title">
-                                {{ user.role === 'admin' ? 'Panel General' : 'Panel de Usuario' }}
+                                {{ user.role === 'admin' ? 'Acceso Rápido' : 'Mis Servicios' }}
                             </h2>
-                            <div class="grid grid-2">
-                                <div class="info-card">
+                            <div class="services-grid">
+                                <div class="service-card" :class="{ disabled: !hasActiveMembership && user.role !== 'admin' }">
+                                    <div class="service-icon">👤</div>
                                     <h3>Mi Perfil</h3>
                                     <p>Ver y editar información personal</p>
-                                    <button @click="setActiveSection('profile')" class="info-btn">Ver Perfil</button>
+                                    <button @click="setActiveSection('profile')"
+                                            class="service-btn"
+                                            :disabled="!hasActiveMembership && user.role !== 'admin'">
+                                        Ver Perfil
+                                    </button>
                                 </div>
-                                <div class="info-card">
-                                    <h3>Actividad</h3>
-                                    <p>Ver actividad reciente</p>
-                                    <button class="info-btn">Ver Actividad</button>
+
+                                <div class="service-card" :class="{ disabled: !hasActiveMembership && user.role !== 'admin' }">
+                                    <div class="service-icon">🚲</div>
+                                    <h3>Mis Bicicletas</h3>
+                                    <p>Gestionar mis bicicletas</p>
+                                    <button @click="setActiveSection('bikes')"
+                                            class="service-btn"
+                                            :disabled="!hasActiveMembership && user.role !== 'admin'">
+                                        Ver Bicicletas
+                                    </button>
+                                    <span v-if="!hasActiveMembership && user.role !== 'admin'" class="premium-badge">Premium</span>
+                                </div>
+
+                                <div class="service-card" :class="{ disabled: !hasActiveMembership && user.role !== 'user' }">
+                                    <div class="service-icon">🚲</div>
+                                    <h3>Mis </h3>
+                                    <p>Gestionar mis bicicletas</p>
+                                    <button @click="setActiveSection('stations')"
+                                            class="service-btn"
+                                            :disabled="!hasActiveMembership && user.role !== 'admin'">
+                                        Ver Bicicletas
+                                    </button>
+                                    <span v-if="!hasActiveMembership && user.role !== 'admin'" class="premium-badge">Premium</span>
+                                </div>
+
+                                <div class="service-card" :class="{ disabled: !canAccessReports }">
+                                    <div class="service-icon">📈</div>
+                                    <h3>Reportes</h3>
+                                    <p>Ver reportes y estadísticas</p>
+                                    <button @click="setActiveSection('reports')"
+                                            class="service-btn"
+                                            :disabled="!canAccessReports">
+                                        Ver Reportes
+                                    </button>
+                                    <span v-if="!canAccessReports" class="premium-badge">Premium</span>
+                                </div>
+
+                                <div class="service-card">
+                                    <div class="service-icon">💳</div>
+                                    <h3>Membresías</h3>
+                                    <p>Gestionar mi membresía</p>
+                                    <button @click="setActiveSection('memberships')" class="service-btn">
+                                        {{ hasActiveMembership ? 'Gestionar' : 'Activar' }}
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -223,7 +355,10 @@
                 <div v-else-if="activeSection === 'memberships'" class="section">
                     <div class="membership-container">
                         <!-- Aquí se carga el componente de membresías -->
-                        <membership-payment ref="membershipComponent" />
+                        <membership-payment
+                            ref="membershipComponent"
+                            @membership-updated="onMembershipUpdated"
+                        />
                     </div>
                 </div>
 
@@ -253,6 +388,12 @@
                                     <label>Rol:</label>
                                     <span>{{ getRoleText() }}</span>
                                 </div>
+                                <div v-if="currentMembership" class="profile-field">
+                                    <label>Membresía:</label>
+                                    <span class="membership-badge" :class="'badge-' + currentMembership.plan_type">
+                                        {{ currentMembership.plan_info.name }}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -278,10 +419,12 @@
 <script>
 // Importar el componente de membresías
 import MembershipPayment from './MembershipPayment.vue';
+import Estaciones from './Estacion.vue';
 
 export default {
     components: {
-        MembershipPayment
+        MembershipPayment,
+        Estaciones,
     },
 
     data() {
@@ -290,7 +433,8 @@ export default {
             activeSection: 'dashboard',
             sidebarOpen: true,
             currentMembership: null,
-            hasActiveMembership: false
+            hasActiveMembership: false,
+            loading: false
         }
     },
 
@@ -309,35 +453,90 @@ export default {
     methods: {
         async getCurrentUser() {
             try {
-                const response = await axios.get('/user');
-                this.user = response.data.user;
-            } catch (error) {
-                console.error('Error al obtener usuario:', error);
-                window.location.href = '/login';
-            }
-        },
-
-        async loadCurrentMembership() {
-            try {
-                const response = await fetch('/api/memberships/current', {
+                const response = await axios.get('/api/user', {
                     headers: {
                         'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
                     }
                 });
-                const result = await response.json();
 
-                if (result.success) {
-                    this.currentMembership = result.membership;
-                    this.hasActiveMembership = true;
+                if (response.data.success) {
+                    this.user = response.data.user;
+                    console.log('Usuario cargado:', this.user);
+                } else {
+                    console.error('Error en respuesta:', response.data);
+                    throw new Error('Error al obtener usuario');
+                }
+            } catch (error) {
+                console.error('Error al obtener usuario:', error);
+                // Si hay error de autenticación, redirigir al login
+                if (error.response && error.response.status === 401) {
+                    window.location.href = '/login';
+                }
+            }
+        },
+
+
+        async loadCurrentMembership() {
+            this.loading = true;
+            try {
+                const response = await axios.get('/api/memberships/current', {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    }
+                });
+
+                console.log('Respuesta de membresía:', response.data);
+
+                if (response.data.success && response.data.membership) {
+                    this.currentMembership = response.data.membership;
+                    this.hasActiveMembership = response.data.membership.is_active;
+                    console.log('Membresía cargada:', this.currentMembership);
                 } else {
                     this.currentMembership = null;
                     this.hasActiveMembership = false;
+                    console.log('No hay membresía activa:', response.data.message);
                 }
             } catch (error) {
                 console.error('Error cargando membresía:', error);
                 this.hasActiveMembership = false;
+                this.currentMembership = null;
+
+                // Si es un error de red o servidor, mostrar mensaje al usuario
+                if (error.response && error.response.status >= 500) {
+                    console.error('Error del servidor al cargar membresía');
+                }
+            } finally {
+                this.loading = false;
             }
+        },
+
+        // Nuevo método para verificar acceso a funcionalidades
+        async checkAccess(feature) {
+            try {
+                const response = await axios.post('/api/memberships/check-access', {
+                    feature: feature
+                }, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    }
+                });
+
+                return response.data.can_access;
+            } catch (error) {
+                console.error('Error verificando acceso:', error);
+                return false;
+            }
+        },
+        // Método llamado cuando se actualiza la membresía
+        async onMembershipUpdated(membershipData) {
+            console.log('Membresía actualizada:', membershipData);
+            // Recargar la membresía actual
+            await this.loadCurrentMembership();
+            // Volver al dashboard para mostrar el nuevo estado
+            this.setActiveSection('dashboard');
         },
 
         toggleSidebar() {
@@ -352,6 +551,7 @@ export default {
             const titles = {
                 'dashboard': 'Dashboard',
                 'memberships': 'Membresías',
+                'station': 'Estaciones',
                 'profile': 'Mi Perfil',
                 'bikes': 'Mis Bicicletas',
                 'reports': 'Reportes',
@@ -373,6 +573,24 @@ export default {
             return this.user.role === 'admin' ? 'Administrador' : 'Usuario';
         },
 
+        getPlanEmoji(planType) {
+            const emojis = {
+                'basic': '🥉',
+                'premium': '🥈',
+                'vip': '🥇'
+            };
+            return emojis[planType] || '💳';
+        },
+
+        formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('es-GT', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        },
+
         async logout() {
             try {
                 await axios.post('/logout');
@@ -386,7 +604,7 @@ export default {
 </script>
 
 <style scoped>
-/* Layout Base */
+/* Estilos base existentes... */
 .sidebar-container {
     transition: all 0.3s ease;
     position: relative;
@@ -432,7 +650,7 @@ export default {
     margin-left: 70px;
 }
 
-/* Sidebar Header */
+/* Sidebar styles... */
 .sidebar-header {
     padding: 20px;
     border-bottom: 1px solid #374151;
@@ -479,7 +697,7 @@ export default {
     transform: rotate(180deg);
 }
 
-/* Navigation */
+/* Navigation styles... */
 .sidebar-nav {
     flex: 1;
     padding: 20px 0;
@@ -548,87 +766,7 @@ export default {
     margin-left: auto;
 }
 
-.nav-divider {
-    margin: 20px 0;
-    padding: 0 20px;
-}
-
-.nav-divider hr {
-    border: none;
-    border-top: 1px solid #374151;
-    margin-bottom: 10px;
-}
-
-.divider-text {
-    font-size: 0.8rem;
-    color: #6b7280;
-    text-transform: uppercase;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-}
-
-/* Sidebar Footer */
-.sidebar-footer {
-    border-top: 1px solid #374151;
-    padding: 20px;
-}
-
-.user-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 15px;
-}
-
-.user-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 0.9rem;
-}
-
-.user-details {
-    flex: 1;
-}
-
-.user-name {
-    font-weight: 600;
-    font-size: 0.9rem;
-    margin: 0 0 2px 0;
-}
-
-.user-role {
-    font-size: 0.8rem;
-    color: #9ca3af;
-    margin: 0;
-}
-
-.logout-btn {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 12px;
-    background: #374151;
-    color: #d1d5db;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-size: 0.9rem;
-}
-
-.logout-btn:hover {
-    background: #ef4444;
-    color: white;
-}
-
-/* Header */
+/* Header styles... */
 .header {
     background: white;
     border-bottom: 1px solid #e5e7eb;
@@ -661,6 +799,12 @@ export default {
 .membership-status {
     display: flex;
     align-items: center;
+    gap: 12px;
+}
+
+.membership-info {
+    font-size: 0.9rem;
+    color: #6b7280;
 }
 
 .membership-badge {
@@ -685,11 +829,6 @@ export default {
     color: #92400e;
 }
 
-.header-right {
-    display: flex;
-    align-items: center;
-}
-
 .membership-alert {
     display: flex;
     align-items: center;
@@ -701,8 +840,15 @@ export default {
     font-size: 0.9rem;
 }
 
-.alert-icon {
-    font-size: 1.1rem;
+.membership-active {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #d1fae5;
+    color: #065f46;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.9rem;
 }
 
 .alert-btn {
@@ -716,11 +862,7 @@ export default {
     font-weight: 600;
 }
 
-.alert-btn:hover {
-    background: #d97706;
-}
-
-/* Content */
+/* Content styles... */
 .content {
     padding: 30px;
     min-height: calc(100vh - 70px);
@@ -741,156 +883,445 @@ export default {
     padding: 30px;
 }
 
-.section-title {
-    font-size: 1.3rem;
-    font-weight: 700;
-    color: #1f2937;
-    margin-bottom: 20px;
-}
-
 .mb-6 {
     margin-bottom: 1.5rem;
 }
 
-/* Stats Grid */
+/* Membership Welcome Styles */
+.membership-welcome {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 12px;
+    margin: -30px -30px 30px -30px;
+}
+
+.welcome-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.welcome-icon {
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.plan-emoji {
+    font-size: 2rem;
+}
+
+.welcome-content {
+    flex: 1;
+}
+
+.welcome-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+}
+
+.welcome-subtitle {
+    font-size: 0.95rem;
+    opacity: 0.9;
+    margin: 0;
+}
+
+.welcome-badge {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 15px 20px;
+    border-radius: 12px;
+    text-align: center;
+    min-width: 80px;
+}
+
+.days-remaining {
+    font-size: 1.8rem;
+    font-weight: 700;
+    display: block;
+}
+
+.days-text {
+    font-size: 0.8rem;
+    opacity: 0.8;
+}
+
+.membership-features {
+    margin-bottom: 25px;
+}
+
+.features-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 15px 0;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.feature-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+
+.feature-icon {
+    color: #10b981;
+    font-weight: bold;
+}
+
+.membership-actions {
+    display: flex;
+    gap: 15px;
+}
+
+.action-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.action-btn.primary {
+    background: white;
+    color: #667eea;
+}
+
+.action-btn.secondary {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* No Membership Styles */
+.no-membership {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.no-membership-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    opacity: 0.7;
+}
+
+.no-membership-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0 0 15px 0;
+}
+
+.no-membership-text {
+    font-size: 1rem;
+    color: #6b7280;
+    margin: 0 0 25px 0;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.activation-btn {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.activation-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+}
+
+/* Stats Grid Styles */
+.section-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0 0 25px 0;
+}
+
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 20px;
 }
 
 .stat-card {
-    padding: 24px;
-    border-radius: 10px;
-    position: relative;
-    overflow: hidden;
-}
-
-.stat-blue {
-    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
-    color: #1e40af;
-}
-
-.stat-green {
-    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
-    color: #065f46;
-}
-
-.stat-purple {
-    background: linear-gradient(135deg, #e9d5ff, #d8b4fe);
-    color: #7c2d12;
-}
-
-.stat-card h3 {
-    font-weight: 700;
-    margin-bottom: 8px;
-}
-
-.stat-card p {
-    font-size: 0.9rem;
-    margin-bottom: 15px;
-    opacity: 0.8;
-}
-
-.stat-btn {
-    background: rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: inherit;
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-size: 0.9rem;
-    cursor: pointer;
-    font-weight: 600;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 25px;
+    display: flex;
+    gap: 20px;
+    align-items: center;
     transition: all 0.3s ease;
 }
 
-.stat-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: translateY(-1px);
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 }
 
-/* Grid */
-.grid {
-    display: grid;
-    gap: 20px;
+.stat-blue {
+    border-left: 4px solid #3b82f6;
 }
 
-.grid-2 {
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+.stat-green {
+    border-left: 4px solid #10b981;
 }
 
-.info-card {
-    background: #f9fafb;
-    padding: 20px;
-    border-radius: 10px;
-    border: 1px solid #e5e7eb;
+.stat-purple {
+    border-left: 4px solid #8b5cf6;
 }
 
-.info-card h3 {
+.stat-icon {
+    font-size: 2.5rem;
+    opacity: 0.8;
+}
+
+.stat-content h3 {
+    font-size: 1.1rem;
     font-weight: 600;
     color: #1f2937;
-    margin-bottom: 8px;
+    margin: 0 0 8px 0;
 }
 
-.info-card p {
+.stat-content p {
     color: #6b7280;
+    margin: 0 0 15px 0;
     font-size: 0.9rem;
-    margin-bottom: 15px;
 }
 
-.info-btn {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white;
+.stat-btn {
+    background: #f3f4f6;
+    color: #374151;
     border: none;
     padding: 8px 16px;
     border-radius: 6px;
     font-size: 0.9rem;
+    font-weight: 500;
     cursor: pointer;
-    font-weight: 600;
     transition: all 0.3s ease;
 }
 
-.info-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+.stat-btn:hover {
+    background: #e5e7eb;
 }
 
-/* Profile */
+/* Services Grid Styles */
+.services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+}
+
+.service-card {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 25px;
+    text-align: center;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.service-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    border-color: #d1d5db;
+}
+
+.service-card.disabled {
+    opacity: 0.6;
+    background: #f3f4f6;
+}
+
+.service-card.disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.service-icon {
+    font-size: 2.5rem;
+    margin-bottom: 15px;
+    display: block;
+}
+
+.service-card h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 10px 0;
+}
+
+.service-card p {
+    color: #6b7280;
+    margin: 0 0 20px 0;
+    font-size: 0.9rem;
+}
+
+.service-btn {
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+}
+
+.service-btn:hover:not(:disabled) {
+    background: #5b6fe8;
+}
+
+.service-btn:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+}
+
+.premium-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #f59e0b;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+/* Profile Styles */
 .profile-info {
     display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 20px;
-    max-width: 500px;
 }
 
 .profile-field {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 0;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.profile-field:last-child {
-    border-bottom: none;
+    flex-direction: column;
+    gap: 5px;
 }
 
 .profile-field label {
     font-weight: 600;
     color: #374151;
+    font-size: 0.9rem;
 }
 
 .profile-field span {
-    color: #6b7280;
+    color: #1f2937;
+    font-size: 1rem;
 }
 
-/* Coming Soon */
+/* Sidebar Footer */
+.sidebar-footer {
+    padding: 20px;
+    border-top: 1px solid #374151;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+}
+
+.user-details {
+    flex: 1;
+    overflow: hidden;
+}
+
+.user-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: white;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-role {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    margin: 0;
+}
+
+.logout-btn {
+    width: 100%;
+    background: #dc2626;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.logout-btn:hover {
+    background: #b91c1c;
+}
+
+.logout-text {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Coming Soon Styles */
 .coming-soon {
     text-align: center;
     padding: 60px 20px;
     color: #6b7280;
 }
 
-.coming-soon p {
+.coming-soon p:first-child {
+    font-size: 2rem;
     margin-bottom: 10px;
 }
 
@@ -898,24 +1329,36 @@ export default {
     font-size: 0.9rem;
 }
 
-/* Membership Container */
-.membership-container {
-    margin: -30px;
+/* Divider Styles */
+.nav-divider {
+    margin: 20px 0;
 }
 
-/* Responsive */
+.nav-divider hr {
+    border: none;
+    border-top: 1px solid #374151;
+    margin: 0 20px 10px 20px;
+}
+
+.divider-text {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    font-weight: 500;
+    padding: 0 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Membership Container */
+.membership-container {
+    width: 100%;
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
     .sidebar-container {
         position: fixed;
-        top: 0;
-        left: 0;
-        z-index: 20;
-        height: 100vh;
-    }
-
-    .sidebar-closed {
-        transform: translateX(-100%);
-        width: 280px;
+        z-index: 1000;
     }
 
     .main-content {
@@ -926,27 +1369,32 @@ export default {
         margin-left: 0;
     }
 
-    .header {
-        padding: 0 15px;
-    }
-
-    .content {
-        padding: 15px;
-    }
-
-    .stats-grid, .grid-2 {
-        grid-template-columns: 1fr;
-    }
-
     .header-content {
         flex-direction: column;
         gap: 10px;
         align-items: flex-start;
     }
 
-    .membership-alert {
-        font-size: 0.8rem;
-        padding: 6px 12px;
+    .services-grid {
+        grid-template-columns: 1fr;
     }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .features-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .membership-actions {
+        flex-direction: column;
+    }
+
+    .welcome-header {
+        flex-direction: column;
+        text-align: center;
+    }
+
 }
 </style>

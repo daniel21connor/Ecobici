@@ -29,6 +29,7 @@ app.component('dashboard', DashboardComponent);
 import MembershipPayment from "@/components/MembershipPayment.vue";
 app.component('membership-payment', MembershipPayment);
 
+
 /**
  * The following block of code may be used to automatically register your
  * Vue components. It will recursively scan this directory for the Vue
