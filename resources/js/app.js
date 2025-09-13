@@ -44,6 +44,8 @@ import DamageReports from "@/components/DamageReports.vue";
 app.component('damageReports', DamageReports);
 import UserRanking from "@/components/UserRanking.vue";
 app.component('userRanking', UserRanking);
+import RoutePlanner from "@/components/RouteMapper.vue";
+app.component('Map', RoutePlanner);
 
 
 /**

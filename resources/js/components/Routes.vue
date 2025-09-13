@@ -58,10 +58,40 @@
             </div>
         </div>
 
-        <!-- Formulario para crear nueva ruta -->
+        <!-- Selector de método de creación -->
         <div class="card mb-6">
             <div class="card-content">
-                <h3 class="section-subtitle">Crear Nueva Ruta</h3>
+                <div class="creation-selector">
+                    <h3 class="section-subtitle">Crear Nueva Ruta</h3>
+                    <div class="method-tabs">
+                        <button
+                            @click="creationMethod = 'map'"
+                            :class="['method-tab', { active: creationMethod === 'map' }]"
+                        >
+                            🗺️ Con Mapa Interactivo
+                        </button>
+                        <button
+                            @click="creationMethod = 'form'"
+                            :class="['method-tab', { active: creationMethod === 'form' }]"
+                        >
+                            📝 Formulario Manual
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Componente de Mapa (nuevo) -->
+        <div v-if="creationMethod === 'map'" class="card mb-6">
+            <div class="card-content">
+                <RouteMapper @route-created="handleRouteCreated" />
+            </div>
+        </div>
+
+        <!-- Formulario manual (existente) -->
+        <div v-if="creationMethod === 'form'" class="card mb-6">
+            <div class="card-content">
+                <h3 class="section-subtitle">Crear Nueva Ruta - Formulario Manual</h3>
                 <form @submit.prevent="createRoute" class="route-form">
                     <div class="form-grid">
                         <div class="form-group">
@@ -214,8 +244,13 @@
 </template>
 
 <script>
+import RouteMapper from './RouteMapper.vue'
+
 export default {
     name: 'Routes',
+    components: {
+        RouteMapper
+    },
     data() {
         return {
             routes: [],
@@ -238,7 +273,8 @@ export default {
             lastRewards: {
                 co2_saved: 0,
                 green_points: 0
-            }
+            },
+            creationMethod: 'map' // 'map' o 'form'
         }
     },
 
@@ -365,6 +401,12 @@ export default {
             }
         },
 
+        handleRouteCreated(newRoute) {
+            // Callback cuando se crea una ruta desde el mapa
+            this.loadRoutes();
+            this.loadBadges();
+        },
+
         resetForm() {
             this.newRoute = {
                 name: '',
@@ -414,6 +456,40 @@ export default {
     font-weight: 600;
     color: #1f2937;
     margin: 0 0 20px 0;
+}
+
+/* Creation Method Selector */
+.creation-selector {
+    text-align: center;
+}
+
+.method-tabs {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 15px;
+}
+
+.method-tab {
+    background: #f3f4f6;
+    color: #6b7280;
+    border: 2px solid #e5e7eb;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.method-tab:hover {
+    border-color: #d1d5db;
+    color: #374151;
+}
+
+.method-tab.active {
+    background: #dbeafe;
+    color: #1e40af;
+    border-color: #3b82f6;
 }
 
 /* Stats Grid */
@@ -844,6 +920,11 @@ export default {
 
     .btn-complete {
         flex: none;
+    }
+
+    .method-tabs {
+        flex-direction: column;
+        gap: 8px;
     }
 }
 </style>

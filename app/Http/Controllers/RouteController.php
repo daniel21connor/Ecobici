@@ -9,8 +9,6 @@ use Illuminate\Support\Facades\Log;
 
 class RouteController extends Controller
 {
-    // Removemos el constructor con middleware ya que lo manejamos en web.php
-
     /**
      * Mostrar todas las rutas del usuario
      */
@@ -69,29 +67,57 @@ class RouteController extends Controller
                 'name' => 'required|string|max:255',
                 'start_point' => 'required|string|max:255',
                 'end_point' => 'required|string|max:255',
-                'distance' => 'required|numeric|min:0.1'
+                'start_latitude' => 'nullable|numeric|between:-90,90',
+                'start_longitude' => 'nullable|numeric|between:-180,180',
+                'end_latitude' => 'nullable|numeric|between:-90,90',
+                'end_longitude' => 'nullable|numeric|between:-180,180',
+                'distance' => 'nullable|numeric|min:0.1',
+                'route_points' => 'nullable|array',
+                'route_description' => 'nullable|string|max:500'
             ], [
                 'name.required' => 'El nombre de la ruta es obligatorio',
                 'start_point.required' => 'El punto de inicio es obligatorio',
                 'end_point.required' => 'El punto de destino es obligatorio',
-                'distance.required' => 'La distancia es obligatoria',
+                'start_latitude.between' => 'Latitud de inicio debe estar entre -90 y 90',
+                'start_longitude.between' => 'Longitud de inicio debe estar entre -180 y 180',
+                'end_latitude.between' => 'Latitud de destino debe estar entre -90 y 90',
+                'end_longitude.between' => 'Longitud de destino debe estar entre -180 y 180',
                 'distance.numeric' => 'La distancia debe ser un número',
                 'distance.min' => 'La distancia mínima es 0.1 km'
             ]);
 
-            $route = Route::create([
+            $route = new Route([
                 'user_id' => Auth::id(),
                 'name' => $request->name,
                 'start_point' => $request->start_point,
                 'end_point' => $request->end_point,
-                'distance' => $request->distance,
+                'start_latitude' => $request->start_latitude,
+                'start_longitude' => $request->start_longitude,
+                'end_latitude' => $request->end_latitude,
+                'end_longitude' => $request->end_longitude,
+                'route_points' => $request->route_points,
+                'route_description' => $request->route_description,
                 'completed' => false
             ]);
+
+            // Si no se proporcionó distancia pero sí coordenadas, calcularla
+            if (!$request->distance && $request->start_latitude && $request->end_latitude) {
+                $route->calculateDistanceFromCoordinates();
+            } else {
+                $route->distance = $request->distance;
+            }
+
+            // Calcular tiempo estimado
+            if ($route->distance) {
+                $route->calculateEstimatedTime();
+            }
+
+            $route->save();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Ruta creada exitosamente',
-                'route' => $route
+                'route' => $route->fresh()
             ]);
 
         } catch (\Exception $e) {
@@ -125,22 +151,7 @@ class RouteController extends Controller
                 ], 400);
             }
 
-            // Verificar si el modelo tiene el método completeRoute
-            if (method_exists($route, 'completeRoute')) {
-                $route->completeRoute();
-            } else {
-                // Fallback manual si no existe el método
-                $route->completed = true;
-                $route->completed_at = now();
-
-                // Calcular CO2 ahorrado (aprox 0.21 kg por km en bicicleta vs auto)
-                $route->co2_saved = round($route->distance * 0.21, 2);
-
-                // Calcular puntos verdes (10 puntos por km)
-                $route->green_points = round($route->distance * 10);
-
-                $route->save();
-            }
+            $route->completeRoute();
 
             return response()->json([
                 'success' => true,

@@ -194,6 +194,13 @@ Route::middleware(['auth'])->group(function () {
 
 Route::middleware(['auth'])->group(function () {
 
+    // Rutas del módulo de rutas - IMPORTANTE: Las rutas más específicas van primero
+    Route::get('/routes/badges', [RouteController::class, 'getBadges'])->name('routes.badges');
+    Route::get('/routes', [RouteController::class, 'index'])->name('routes.index');
+    Route::post('/routes', [RouteController::class, 'store'])->name('routes.store'); // Esta es la que usa RouteMapper
+    Route::patch('/routes/{route}/complete', [RouteController::class, 'complete'])->name('routes.complete');
+    Route::delete('/routes/{route}', [RouteController::class, 'destroy'])->name('routes.destroy');
+
     // Rutas para Rankings de Usuarios (sin prefijo /api)
     // Coinciden exactamente con las URLs que usa tu componente Vue
 
