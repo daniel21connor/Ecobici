@@ -14,6 +14,13 @@
             <div class="map-controls">
                 <div class="control-group">
                     <button
+                        @click="toggleStationsVisibility"
+                        class="control-btn stations-btn"
+                        :class="{ active: showStations }"
+                    >
+                        🏢 {{ showStations ? 'Ocultar' : 'Mostrar' }} Estaciones
+                    </button>
+                    <button
                         @click="clearRoute"
                         class="control-btn clear-btn"
                         :disabled="!startPoint && !endPoint"
@@ -38,6 +45,39 @@
                 <div class="point-status" :class="{ active: endPoint }">
                     <span class="point-icon end">🔴</span>
                     <span class="point-text">{{ endPoint ? 'Destino seleccionado' : 'Clic para destino' }}</span>
+                </div>
+                <div class="point-status" :class="{ active: showStations }">
+                    <span class="point-icon stations">🏢</span>
+                    <span class="point-text">{{ stations.length }} estaciones {{ showStations ? 'visibles' : 'disponibles' }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Información de estaciones cercanas -->
+        <div v-if="nearbyStations.length > 0" class="nearby-stations-card">
+            <h4 class="info-title">🏢 Estaciones Cercanas a tu Ruta</h4>
+            <div class="stations-list">
+                <div
+                    v-for="station in nearbyStations"
+                    :key="station.id"
+                    class="station-item"
+                    @click="highlightStation(station)"
+                >
+                    <div class="station-info">
+                        <div class="station-name">{{ station.name }}</div>
+                        <div class="station-details">
+                            <span class="station-type" :class="getStationTypeClass(station.type)">
+                                {{ getStationTypeIcon(station.type) }} {{ getStationTypeText(station.type) }}
+                            </span>
+                            <span class="station-distance">{{ station.distanceFromRoute }} km de la ruta</span>
+                        </div>
+                    </div>
+                    <div class="station-capacity">
+                        <div class="capacity-info">
+                            {{ getAvailableBikes(station) }}/{{ station.capacity }}
+                        </div>
+                        <div class="capacity-label">disponibles</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -162,6 +202,12 @@ export default {
             },
             loading: false,
             mapLoaded: false,
+            // Estaciones
+            stations: [],
+            stationMarkers: [],
+            showStations: true,
+            nearbyStations: [],
+            highlightedStationMarker: null,
             // Coordenadas de Puerto Barrios, Izabal, Guatemala
             defaultCenter: {
                 lat: 15.7281,
@@ -172,9 +218,30 @@ export default {
 
     mounted() {
         this.loadGoogleMaps();
+        this.loadStations();
     },
 
     methods: {
+        async loadStations() {
+            try {
+                const response = await axios.get('/stations', {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    }
+                });
+
+                this.stations = response.data.stations || [];
+
+                // Si el mapa ya está cargado, mostrar las estaciones
+                if (this.mapLoaded) {
+                    this.displayStations();
+                }
+            } catch (error) {
+                console.error('Error cargando estaciones:', error);
+            }
+        },
+
         loadGoogleMaps() {
             // Verificar si Google Maps ya está cargado
             if (window.google && window.google.maps) {
@@ -236,6 +303,11 @@ export default {
                 this.map.addListener('click', this.handleMapClick);
 
                 this.mapLoaded = true;
+
+                // Mostrar estaciones si ya están cargadas
+                if (this.stations.length > 0) {
+                    this.displayStations();
+                }
             } catch (error) {
                 console.error('Error inicializando Google Maps:', error);
                 this.initializeMapFallback();
@@ -251,11 +323,242 @@ export default {
                     <div style="font-size: 2rem;">🗺️</div>
                     <div>Google Maps no disponible</div>
                     <div style="font-size: 0.8rem;">Haz clic para seleccionar puntos</div>
+                    <div style="font-size: 0.8rem;">${this.stations.length} estaciones disponibles</div>
                 </div>
             `;
 
             this.$refs.googleMap.style.cursor = 'crosshair';
             this.$refs.googleMap.addEventListener('click', this.handleMapClickFallback);
+        },
+
+        displayStations() {
+            if (!this.showStations || !window.google || !this.map) return;
+
+            // Limpiar marcadores existentes
+            this.clearStationMarkers();
+
+            this.stations.forEach(station => {
+                if (!station.is_active) return; // Solo mostrar estaciones activas
+
+                const position = {
+                    lat: parseFloat(station.latitude),
+                    lng: parseFloat(station.longitude)
+                };
+
+                const marker = new google.maps.Marker({
+                    position: position,
+                    map: this.map,
+                    title: `${station.name} - ${station.code}`,
+                    icon: {
+                        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                        scale: 6,
+                        fillColor: this.getStationColor(station),
+                        fillOpacity: 0.8,
+                        strokeWeight: 2,
+                        strokeColor: '#ffffff',
+                        rotation: 0
+                    }
+                });
+
+                // InfoWindow para mostrar información de la estación
+                const infoWindow = new google.maps.InfoWindow({
+                    content: this.createStationInfoContent(station)
+                });
+
+                marker.addListener('click', () => {
+                    // Cerrar otros InfoWindows
+                    this.stationMarkers.forEach(m => {
+                        if (m.infoWindow) {
+                            m.infoWindow.close();
+                        }
+                    });
+
+                    infoWindow.open(this.map, marker);
+                });
+
+                this.stationMarkers.push({
+                    marker: marker,
+                    infoWindow: infoWindow,
+                    station: station
+                });
+            });
+        },
+
+        clearStationMarkers() {
+            this.stationMarkers.forEach(item => {
+                if (item.infoWindow) {
+                    item.infoWindow.close();
+                }
+                item.marker.setMap(null);
+            });
+            this.stationMarkers = [];
+        },
+
+        toggleStationsVisibility() {
+            this.showStations = !this.showStations;
+
+            if (this.showStations) {
+                this.displayStations();
+            } else {
+                this.clearStationMarkers();
+            }
+        },
+
+        createStationInfoContent(station) {
+            const availableBikes = this.getAvailableBikes(station);
+            const totalBikes = this.getTotalBikes(station);
+
+            return `
+                <div style="padding: 10px; max-width: 250px;">
+                    <h4 style="margin: 0 0 8px 0; color: #1f2937; font-size: 1rem;">
+                        ${this.getStationTypeIcon(station.type)} ${station.name}
+                    </h4>
+                    <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 0.8rem;">
+                        <strong>Código:</strong> ${station.code}
+                    </p>
+                    <div style="margin-bottom: 8px;">
+                        <span style="background: ${this.getStationColor(station)}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem;">
+                            ${this.getStationTypeText(station.type)}
+                        </span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+                        <div style="text-align: center; background: #f0f9ff; padding: 8px; border-radius: 6px;">
+                            <div style="font-weight: bold; color: #1e40af;">${availableBikes}</div>
+                            <div style="font-size: 0.7rem; color: #6b7280;">Disponibles</div>
+                        </div>
+                        <div style="text-align: center; background: #f0fdf4; padding: 8px; border-radius: 6px;">
+                            <div style="font-weight: bold; color: #16a34a;">${totalBikes}/${station.capacity}</div>
+                            <div style="font-size: 0.7rem; color: #6b7280;">Ocupación</div>
+                        </div>
+                    </div>
+                    ${station.address ? `<p style="margin: 0; color: #6b7280; font-size: 0.8rem;">📍 ${station.address}</p>` : ''}
+                </div>
+            `;
+        },
+
+        getStationColor(station) {
+            const colors = {
+                'carga': '#10b981',      // Verde
+                'descanso': '#f59e0b',   // Naranja
+                'seleccion': '#8b5cf6'   // Púrpura
+            };
+            return colors[station.type] || '#6b7280';
+        },
+
+        getStationTypeIcon(type) {
+            const icons = {
+                'carga': '🔋',
+                'descanso': '☕',
+                'seleccion': '🎯'
+            };
+            return icons[type] || '🏢';
+        },
+
+        getStationTypeText(type) {
+            const types = {
+                'carga': 'Carga',
+                'descanso': 'Descanso',
+                'seleccion': 'Selección'
+            };
+            return types[type] || type;
+        },
+
+        getStationTypeClass(type) {
+            return `type-${type}`;
+        },
+
+        getAvailableBikes(station) {
+            if (!station.bikes) return 0;
+            return station.bikes.filter(bike => bike.is_active && bike.status === 'disponible').length;
+        },
+
+        getTotalBikes(station) {
+            if (!station.bikes) return 0;
+            return station.bikes.filter(bike => bike.is_active).length;
+        },
+
+        findNearbyStations() {
+            if (!this.startPoint || !this.endPoint) {
+                this.nearbyStations = [];
+                return;
+            }
+
+            const nearbyStations = [];
+
+            this.stations.forEach(station => {
+                if (!station.is_active) return;
+
+                const stationPos = {
+                    lat: parseFloat(station.latitude),
+                    lng: parseFloat(station.longitude)
+                };
+
+                // Calcular distancia al punto de inicio y destino
+                const distanceToStart = this.getDistanceFromLatLng(
+                    this.startPoint.lat, this.startPoint.lng,
+                    stationPos.lat, stationPos.lng
+                );
+
+                const distanceToEnd = this.getDistanceFromLatLng(
+                    this.endPoint.lat, this.endPoint.lng,
+                    stationPos.lat, stationPos.lng
+                );
+
+                // Tomar la menor distancia como referencia
+                const distanceFromRoute = Math.min(distanceToStart, distanceToEnd);
+
+                // Si está a menos de 2km de algún punto de la ruta
+                if (distanceFromRoute <= 2) {
+                    nearbyStations.push({
+                        ...station,
+                        distanceFromRoute: Math.round(distanceFromRoute * 100) / 100
+                    });
+                }
+            });
+
+            // Ordenar por distancia
+            this.nearbyStations = nearbyStations.sort((a, b) => a.distanceFromRoute - b.distanceFromRoute);
+        },
+
+        highlightStation(station) {
+            if (!window.google || !this.map) return;
+
+            // Remover marcador anterior
+            if (this.highlightedStationMarker) {
+                this.highlightedStationMarker.setMap(null);
+            }
+
+            // Crear marcador destacado
+            const position = {
+                lat: parseFloat(station.latitude),
+                lng: parseFloat(station.longitude)
+            };
+
+            this.highlightedStationMarker = new google.maps.Marker({
+                position: position,
+                map: this.map,
+                title: station.name,
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 15,
+                    fillColor: '#ef4444',
+                    fillOpacity: 0.8,
+                    strokeWeight: 3,
+                    strokeColor: '#ffffff'
+                },
+                animation: google.maps.Animation.BOUNCE
+            });
+
+            // Centrar el mapa en la estación
+            this.map.setCenter(position);
+            this.map.setZoom(16);
+
+            // Quitar la animación después de 2 segundos
+            setTimeout(() => {
+                if (this.highlightedStationMarker) {
+                    this.highlightedStationMarker.setAnimation(null);
+                }
+            }, 2000);
         },
 
         handleMapClick(event) {
@@ -308,6 +611,7 @@ export default {
             this.getAddressFromCoordinates(point, 'end');
             this.calculateRoute();
             this.updateRouteData();
+            this.findNearbyStations();
         },
 
         createMarker(point, type) {
@@ -476,6 +780,7 @@ export default {
             this.endPoint = null;
             this.startPointAddress = '';
             this.endPointAddress = '';
+            this.nearbyStations = [];
 
             if (this.startMarker) {
                 this.startMarker.setMap(null);
@@ -485,6 +790,11 @@ export default {
             if (this.endMarker) {
                 this.endMarker.setMap(null);
                 this.endMarker = null;
+            }
+
+            if (this.highlightedStationMarker) {
+                this.highlightedStationMarker.setMap(null);
+                this.highlightedStationMarker = null;
             }
 
             if (this.directionsRenderer) {
@@ -607,6 +917,7 @@ export default {
 .control-group {
     display: flex;
     gap: 8px;
+    flex-wrap: wrap;
 }
 
 .control-btn {
@@ -619,6 +930,7 @@ export default {
     cursor: pointer;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     transition: all 0.2s;
+    white-space: nowrap;
 }
 
 .control-btn:hover:not(:disabled) {
@@ -629,6 +941,12 @@ export default {
 .control-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.stations-btn.active {
+    background: #10b981;
+    color: white;
+    border-color: #10b981;
 }
 
 .clear-btn:hover:not(:disabled) {
@@ -648,20 +966,23 @@ export default {
     right: 15px;
     display: flex;
     justify-content: space-between;
-    gap: 15px;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 .point-status {
     background: rgba(255, 255, 255, 0.95);
     border: 1px solid #e5e7eb;
     border-radius: 8px;
-    padding: 8px 12px;
+    padding: 6px 10px;
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.8rem;
+    gap: 6px;
+    font-size: 0.75rem;
     transition: all 0.3s;
     backdrop-filter: blur(4px);
+    flex: 1;
+    min-width: 120px;
 }
 
 .point-status.active {
@@ -670,12 +991,106 @@ export default {
 }
 
 .point-icon {
-    font-size: 1rem;
+    font-size: 0.9rem;
 }
 
 .point-text {
     font-weight: 500;
     color: #374151;
+    text-align: center;
+    flex: 1;
+}
+
+.nearby-stations-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 20px;
+    border-left: 4px solid #10b981;
+}
+
+.stations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.station-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.station-item:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+}
+
+.station-info {
+    flex: 1;
+}
+
+.station-name {
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 4px;
+}
+
+.station-details {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.station-type {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.station-type.type-carga {
+    background: rgba(16, 185, 129, 0.1);
+    color: #065f46;
+}
+
+.station-type.type-descanso {
+    background: rgba(245, 158, 11, 0.1);
+    color: #92400e;
+}
+
+.station-type.type-seleccion {
+    background: rgba(139, 92, 246, 0.1);
+    color: #5b21b6;
+}
+
+.station-distance {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.station-capacity {
+    text-align: center;
+    min-width: 60px;
+}
+
+.capacity-info {
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.capacity-label {
+    font-size: 0.7rem;
+    color: #6b7280;
 }
 
 .route-info-card, .route-form-card {
@@ -838,9 +1253,22 @@ export default {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+    .control-group {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+    }
+
     .points-indicator {
         flex-direction: column;
         gap: 8px;
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+    }
+
+    .point-status {
+        min-width: auto;
     }
 
     .info-grid {
@@ -857,6 +1285,32 @@ export default {
 
     .google-map {
         height: 300px;
+    }
+
+    .station-details {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .nearby-stations-card {
+        padding: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .mapper-title {
+        font-size: 1.3rem;
+    }
+
+    .station-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .station-capacity {
+        align-self: flex-end;
     }
 }
 </style>

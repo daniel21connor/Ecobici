@@ -138,18 +138,6 @@
                                 <span v-if="sidebarOpen" class="nav-text">Usuarios</span>
                             </a>
                         </li>
-
-                        <!-- Configuración (solo admin) -->
-                        <li v-if="isAdmin">
-                            <a
-                                @click="setActiveSection('settings')"
-                                class="nav-item"
-                                :class="{ 'nav-active': activeSection === 'settings' }"
-                            >
-                                <span class="nav-icon">⚙️</span>
-                                <span v-if="sidebarOpen" class="nav-text">Configuración</span>
-                            </a>
-                        </li>
                     </ul>
                 </nav>
 
@@ -260,14 +248,6 @@
                                             <h3>Gestión de Usuarios</h3>
                                             <p>Administrar usuarios del sistema</p>
                                             <button @click="setActiveSection('users')" class="stat-btn">Ver Usuarios</button>
-                                        </div>
-                                    </div>
-                                    <div class="stat-card stat-green">
-                                        <div class="stat-icon">⚙️</div>
-                                        <div class="stat-content">
-                                            <h3>Configuración</h3>
-                                            <p>Configurar el sistema</p>
-                                            <button @click="setActiveSection('settings')" class="stat-btn">Configurar</button>
                                         </div>
                                     </div>
                                     <div class="stat-card stat-purple">
@@ -538,32 +518,6 @@
                         <user-ranking ref="userRankingComponent" />
                     </div>
                 </div>
-
-                <!-- Settings Section (Admin only) -->
-                <div v-else-if="activeSection === 'settings'" class="section">
-                    <div class="card">
-                        <div class="card-content">
-                            <h2 class="section-title">Configuración</h2>
-                            <div class="coming-soon">
-                                <p>🚧 Esta sección está en desarrollo</p>
-                                <p class="text-sm">Pronto estará disponible</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Fallback for any other section -->
-                <div v-else class="section">
-                    <div class="card">
-                        <div class="card-content">
-                            <h2 class="section-title">{{ getPageTitle() }}</h2>
-                            <div class="coming-soon">
-                                <p>🚧 Esta sección está en desarrollo</p>
-                                <p class="text-sm">Pronto estará disponible</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </main>
         </div>
     </div>
@@ -750,7 +704,6 @@ export default {
                 'DamageReports': 'Reportes',
                 'userRanking': 'Ranking',
                 'users': 'Gestión de Usuarios',
-                'settings': 'Configuración'
             };
             return titles[this.activeSection] || 'Dashboard';
         },

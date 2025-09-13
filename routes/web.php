@@ -179,6 +179,12 @@ Route::middleware(['auth'])->group(function () {
     // Rutas específicas van antes que las rutas con parámetros
     Route::get('/bikes/create', [BikeController::class, 'create'])->name('bikes.create');
 
+    // Agrega estas rutas faltantes:
+    Route::post('/bikes', [BikeController::class, 'store'])->name('bikes.store');
+    Route::get('/bikes/{bike}', [BikeController::class, 'show'])->name('bikes.show');
+    Route::put('/bikes/{bike}', [BikeController::class, 'update'])->name('bikes.update');
+    Route::delete('/bikes/{bike}', [BikeController::class, 'destroy'])->name('bikes.destroy');
+
     // Primero las rutas fijas
     Route::get('damage-reports/bikes', [DamageReportController::class, 'getAvailableBikes'])->name('damage-reports.bikes');
     Route::get('damage-reports/statistics', [DamageReportController::class, 'statistics'])->name('damage-reports.statistics');

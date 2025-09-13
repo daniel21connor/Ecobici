@@ -11,10 +11,6 @@
                     <span class="btn-icon">+</span>
                     Nueva Estación
                 </button>
-                <button @click="exportData" class="action-btn secondary">
-                    <span class="btn-icon">📊</span>
-                    Exportar
-                </button>
             </div>
         </div>
 
