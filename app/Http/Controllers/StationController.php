@@ -25,7 +25,7 @@ class StationController extends Controller
                 ], 401);
             }
 
-            $stations = Station::with(['bikes' => function($query) {
+            $stations = Station::with(['bikes' => function ($query) {
                 $query->where('is_active', true);
             }])->get();
 
@@ -115,7 +115,7 @@ class StationController extends Controller
             $station = Station::create($validatedData);
 
             // Cargar la relación con bikes
-            $station->load(['bikes' => function($query) {
+            $station->load(['bikes' => function ($query) {
                 $query->where('is_active', true);
             }]);
 
@@ -148,7 +148,7 @@ class StationController extends Controller
     public function show(Request $request, Station $station)
     {
         try {
-            $station->load(['bikes' => function($query) {
+            $station->load(['bikes' => function ($query) {
                 $query->where('is_active', true);
             }]);
 
@@ -249,14 +249,14 @@ class StationController extends Controller
             $station->update($validatedData);
 
             // Cargar la relación con bikes actualizada
-            $station->load(['bikes' => function($query) {
+            $station->load(['bikes' => function ($query) {
                 $query->where('is_active', true);
             }]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Estación actualizada exitosamente',
-                'station' => $station->fresh()->load(['bikes' => function($query) {
+                'station' => $station->fresh()->load(['bikes' => function ($query) {
                     $query->where('is_active', true);
                 }])
             ]);
@@ -338,14 +338,14 @@ class StationController extends Controller
             $status = $station->is_active ? 'activada' : 'desactivada';
 
             // Cargar la relación con bikes
-            $station->load(['bikes' => function($query) {
+            $station->load(['bikes' => function ($query) {
                 $query->where('is_active', true);
             }]);
 
             return response()->json([
                 'success' => true,
                 'message' => "Estación {$status} exitosamente",
-                'station' => $station->fresh()->load(['bikes' => function($query) {
+                'station' => $station->fresh()->load(['bikes' => function ($query) {
                     $query->where('is_active', true);
                 }])
             ]);
@@ -366,12 +366,15 @@ class StationController extends Controller
     public function getData()
     {
         try {
-            $stations = Station::with(['bikes' => function($query) {
+            $stations = Station::with(['bikes' => function ($query) {
                 $query->where('is_active', true);
             }])
                 ->where('is_active', true)
                 ->get()
-                ->map(function($station) {
+                ->map(function ($station) {
+                    $totalBikes = $station->bikes->count();
+                    $availableSlots = max(0, $station->capacity - $totalBikes);
+
                     return [
                         'id' => $station->id,
                         'name' => $station->name,
@@ -381,7 +384,9 @@ class StationController extends Controller
                         'longitude' => $station->longitude,
                         'capacity' => $station->capacity,
                         'available_bikes' => $station->bikes->where('status', 'disponible')->count(),
-                        'total_bikes' => $station->bikes->count(),
+                        'total_bikes' => $totalBikes,
+                        'available_slots' => $availableSlots, // ← AGREGADO
+                        'is_active' => $station->is_active,   // ← AGREGADO
                     ];
                 });
 

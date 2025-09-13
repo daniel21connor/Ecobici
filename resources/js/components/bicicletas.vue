@@ -637,9 +637,15 @@ export default {
                     }
                 });
 
-                this.stations = response.data || [];
+                if (response.data.success) {
+                    this.stations = response.data.stations || [];
+                    console.log('Estaciones cargadas:', this.stations); // Para debugging
+                } else {
+                    console.error('Error en respuesta de estaciones:', response.data);
+                }
             } catch (error) {
                 console.error('Error cargando estaciones:', error);
+                this.$emit('show-alert', 'Error al cargar las estaciones', 'error');
             }
         },
 

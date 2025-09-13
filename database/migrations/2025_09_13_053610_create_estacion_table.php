@@ -11,39 +11,18 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('estaciones', function (Blueprint $table) {
+        Schema::create('stations', function (Blueprint $table) {
             $table->id();
-
-            // Información básica
-            $table->string('nombre')->unique();
-            $table->text('descripcion')->nullable();
-            $table->string('ubicacion'); // Nombre del área/zona
-
-            // Coordenadas geográficas
-            $table->decimal('latitud', 10, 8); // Precisión de 8 decimales
-            $table->decimal('longitud', 11, 8); // Precisión de 8 decimales
-
-            // Tipo y características
-            $table->enum('tipo_estacion', ['carga', 'descanso', 'seleccion']);
-            $table->integer('capacidad_total')->default(0);
-            $table->integer('capacidad_disponible')->default(0);
-
-            // Estado operativo
-            $table->enum('estado', ['activa', 'inactiva', 'mantenimiento'])->default('activa');
-
-            // Información adicional
-            $table->string('direccion')->nullable();
-            $table->string('telefono')->nullable();
-            $table->text('observaciones')->nullable();
-
-            // Timestamps y soft deletes
+            $table->string('name')->unique();
+            $table->string('code', 10)->unique(); // Código corto para identificar la estación
+            $table->text('description')->nullable();
+            $table->decimal('latitude', 10, 8);
+            $table->decimal('longitude', 11, 8);
+            $table->string('address')->nullable();
+            $table->enum('type', ['carga', 'descanso', 'seleccion']); // RF-04
+            $table->integer('capacity')->default(10); // Capacidad máxima de bicicletas
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
-            $table->softDeletes();
-
-            // Índices
-            $table->index(['tipo_estacion']);
-            $table->index(['estado']);
-            $table->index(['latitud', 'longitud']);
         });
     }
 
@@ -52,6 +31,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('estaciones');
+        Schema::dropIfExists('stations');
     }
 };
