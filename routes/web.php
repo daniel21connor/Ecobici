@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\RouteController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\MembershipController;
@@ -22,12 +23,19 @@ Route::get('/login', [UserController::class, 'showLogin'])->name('login');
 Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'register']);
 Route::post('/logout', [UserController::class, 'logout']);
+Route::post('/create-user', [UserController::class, 'createUser'])->name('create.user');
 
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [UserController::class, 'dashboard'])->name('dashboard');
     Route::get('/user', [UserController::class, 'getUser']);
     Route::get('/users-catalog', [UserController::class, 'getUsersCatalog']);
     Route::post('/create-admin', [UserController::class, 'createAdmin']);
+    // Ruta para crear usuario regular
+
+
+
+
+// Ruta para listar usuarios (si no la tienes ya)
 });
 
 
@@ -90,40 +98,28 @@ Route::middleware([ 'auth'])->prefix('api')->group(function () {
     // ===============================
 
     // Estaciones - RF-04
-    Route::prefix('stations')->group(function () {
-        Route::get('/', [StationController::class, 'index']);
-        Route::get('/types', [StationController::class, 'getTypeOptions']);
-        Route::get('/statistics', [StationController::class, 'getStatistics']);
-        Route::get('/{station}', [StationController::class, 'show']);
-        Route::get('/{station}/available-bikes', [StationController::class, 'getAvailableBikes']);
+    // Rutas de Estaciones
 
-        // Rutas solo para administradores
-        Route::middleware('admin')->group(function () {
-            Route::post('/', [StationController::class, 'store']);
-            Route::put('/{station}', [StationController::class, 'update']);
-            Route::delete('/{station}', [StationController::class, 'destroy']);
+
+// Rutas de Bicicletas
+    Route::middleware(['auth'])->group(function () {
+        Route::get('/bikes', [BikeController::class, 'index'])->name('bikes.index');
+        Route::get('/bikes/data', [BikeController::class, 'getData'])->name('bikes.data');
+
+        // Solo admins pueden crear, editar y eliminar
+        Route::middleware(['admin'])->group(function () {
+            Route::get('/bikes/create', [BikeController::class, 'create'])->name('bikes.create');
+            Route::post('/bikes', [BikeController::class, 'store'])->name('bikes.store');
+            Route::get('/bikes/{bike}/edit', [BikeController::class, 'edit'])->name('bikes.edit');
+            Route::put('/bikes/{bike}', [BikeController::class, 'update'])->name('bikes.update');
+            Route::delete('/bikes/{bike}', [BikeController::class, 'destroy'])->name('bikes.destroy');
+            Route::patch('/bikes/{bike}/toggle-status', [BikeController::class, 'toggleStatus'])->name('bikes.toggle-status');
+            Route::patch('/bikes/{bike}/move-to-station', [BikeController::class, 'moveToStation'])->name('bikes.move-to-station');
+            Route::patch('/bikes/{bike}/update-battery', [BikeController::class, 'updateBattery'])->name('bikes.update-battery');
         });
-    });
 
-    // Bicicletas - RF-05
-    Route::prefix('bikes')->group(function () {
-        Route::get('/', [BikeController::class, 'index']);
-        Route::get('/types', [BikeController::class, 'getTypeOptions']);
-        Route::get('/statuses', [BikeController::class, 'getStatusOptions']);
-        Route::get('/statistics', [BikeController::class, 'getStatistics']);
-        Route::get('/{bike}', [BikeController::class, 'show']);
+        Route::get('/bikes/{bike}', [BikeController::class, 'show'])->name('bikes.show');
 
-        // Acciones de usuario
-        Route::post('/{bike}/rent', [BikeController::class, 'rent']); // RF-06
-        Route::post('/{bike}/return', [BikeController::class, 'returnBike']);
-        Route::post('/{bike}/report-damage', [BikeController::class, 'reportDamage']); // RF-08
-
-        // Rutas solo para administradores
-        Route::middleware('admin')->group(function () {
-            Route::post('/', [BikeController::class, 'store']);
-            Route::put('/{bike}', [BikeController::class, 'update']);
-            Route::delete('/{bike}', [BikeController::class, 'destroy']);
-        });
     });
 
     // ===============================
@@ -182,5 +178,26 @@ Route::prefix('public')->group(function () {
             'success' => true,
             'data' => $stations
         ]);
+    });
+});
+Route::middleware(['auth'])->group(function () {
+    // Rutas del módulo de rutas - IMPORTANTE: Las rutas más específicas van primero
+    Route::get('/routes/badges', [RouteController::class, 'getBadges'])->name('routes.badges');
+    Route::get('/routes', [RouteController::class, 'index'])->name('routes.index');
+    Route::post('/routes', [RouteController::class, 'store'])->name('routes.store');
+    Route::patch('/routes/{route}/complete', [RouteController::class, 'complete'])->name('routes.complete');
+    Route::delete('/routes/{route}', [RouteController::class, 'destroy'])->name('routes.destroy');
+});
+Route::middleware(['auth'])->group(function () {
+    Route::get('/stations', [StationController::class, 'index'])->name('stations.index');
+    Route::get('/stations/data', [StationController::class, 'getData'])->name('stations.data');
+    Route::get('/stations/{station}', [StationController::class, 'show'])->name('stations.show');
+
+    // Solo admins pueden crear, editar y eliminar
+    Route::middleware(['auth'])->group(function () {
+        Route::post('/stations', [StationController::class, 'store'])->name('stations.store');
+        Route::put('/stations/{station}', [StationController::class, 'update'])->name('stations.update');
+        Route::delete('/stations/{station}', [StationController::class, 'destroy'])->name('stations.destroy');
+        Route::patch('/stations/{station}/toggle-status', [StationController::class, 'toggleStatus'])->name('stations.toggle-status');
     });
 });

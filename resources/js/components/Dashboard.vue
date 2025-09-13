@@ -85,6 +85,18 @@
                             </a>
                         </li>
 
+                        <!-- Rutas -->
+                        <li>
+                            <a
+                                @click="setActiveSection('routes')"
+                                class="nav-item"
+                                :class="{ 'nav-active': activeSection === 'routes' }"
+                            >
+                                <span class="nav-icon">🗺️</span>
+                                <span v-if="sidebarOpen" class="nav-text">Mis Rutas</span>
+                            </a>
+                        </li>
+
                         <!-- Reportes (solo si tiene acceso) -->
                         <li v-if="canAccessReports">
                             <a
@@ -362,6 +374,18 @@
                                     <span v-if="!hasActiveMembership && !isAdmin" class="premium-badge">Premium</span>
                                 </div>
 
+                                <div class="service-card" :class="{ disabled: !hasActiveMembership && !isAdmin }">
+                                    <div class="service-icon">🗺️</div>
+                                    <h3>Mis Rutas</h3>
+                                    <p>Planear rutas y reducir CO₂</p>
+                                    <button @click="setActiveSection('routes')"
+                                            class="service-btn"
+                                            :disabled="!hasActiveMembership && !isAdmin">
+                                        Ver Rutas
+                                    </button>
+                                    <span v-if="!hasActiveMembership && !isAdmin" class="premium-badge">Premium</span>
+                                </div>
+
                                 <div class="service-card" :class="{ disabled: !canAccessReports }">
                                     <div class="service-icon">📈</div>
                                     <h3>Reportes</h3>
@@ -402,6 +426,13 @@
                 <div v-else-if="activeSection === 'stations'" class="section">
                     <div class="station-container">
                         <estacion ref="stationComponent" />
+                    </div>
+                </div>
+
+                <!-- Routes Section -->
+                <div v-else-if="activeSection === 'routes'" class="section">
+                    <div class="routes-container">
+                        <routes ref="routesComponent" />
                     </div>
                 </div>
 
@@ -510,18 +541,19 @@
         </div>
     </div>
 </template>
-
 <script>
 // Importar el componente de membresías y estaciones
 import MembershipPayment from './MembershipPayment.vue';
 import Estacion from './Estacion.vue';
 import UserManagement from "@/components/UserManagement.vue";
+import Routes from "@/components/Routes.vue";
 
 export default {
     components: {
         MembershipPayment,
         Estacion,
         UserManagement,
+        Routes,
     },
 
     data() {
@@ -680,6 +712,7 @@ export default {
                 'memberships': 'Membresías',
                 'stations': 'Estaciones',
                 'profile': 'Mi Perfil',
+                'routes': 'Mis Rutas',
                 'bikes': 'Mis Bicicletas',
                 'reports': 'Reportes',
                 'users': 'Gestión de Usuarios',

@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Carbon\Carbon;
 
 class Bike extends Model
 {
@@ -24,179 +23,333 @@ class Bike extends Model
     ];
 
     protected $casts = [
+        'battery_level' => 'integer',
         'purchase_price' => 'decimal:2',
         'purchase_date' => 'date',
         'last_maintenance' => 'date',
-        'is_active' => 'boolean',
-        'battery_level' => 'integer',
+        'is_active' => 'boolean'
     ];
 
-    // Relaciones
+    /**
+     * Relación con estación
+     */
     public function station()
     {
         return $this->belongsTo(Station::class);
     }
 
-    public function usageHistory()
-    {
-        return $this->hasMany(BikeUsageHistory::class);
-    }
-
-    public function damageReports()
-    {
-        return $this->hasMany(DamageReport::class);
-    }
-
-    public function activeDamageReports()
-    {
-        return $this->hasMany(DamageReport::class)
-            ->whereNotIn('status', ['resuelto']);
-    }
-
-    public function currentUsage()
-    {
-        return $this->hasOne(BikeUsageHistory::class)
-            ->where('status', 'activo')
-            ->latest();
-    }
-
-    // Scopes
+    /**
+     * Scope para bicicletas activas
+     */
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
     }
 
+    /**
+     * Scope para bicicletas disponibles
+     */
     public function scopeAvailable($query)
     {
-        return $query->where('status', 'disponible');
+        return $query->where('status', 'disponible')->where('is_active', true);
     }
 
-    public function scopeOfType($query, $type)
+    /**
+     * Scope para bicicletas en uso
+     */
+    public function scopeInUse($query)
     {
-        return $query->where('type', $type);
+        return $query->where('status', 'en_uso')->where('is_active', true);
     }
 
-    public function scopeInStation($query, $stationId)
+    /**
+     * Scope para bicicletas eléctricas
+     */
+    public function scopeElectric($query)
+    {
+        return $query->where('type', 'electrica');
+    }
+
+    /**
+     * Scope para bicicletas tradicionales
+     */
+    public function scopeTraditional($query)
+    {
+        return $query->where('type', 'tradicional');
+    }
+
+    /**
+     * Scope para filtrar por estación
+     */
+    public function scopeAtStation($query, $stationId)
     {
         return $query->where('station_id', $stationId);
     }
 
-    // Accessors
-    public function getIsAvailableAttribute()
+    /**
+     * Obtener texto descriptivo del tipo
+     */
+    public function getTypeTextAttribute()
     {
-        return $this->status === 'disponible' && $this->is_active;
+        $types = [
+            'tradicional' => 'Bicicleta Tradicional',
+            'electrica' => 'Bicicleta Eléctrica'
+        ];
+
+        return $types[$this->type] ?? $this->type;
     }
 
+    /**
+     * Obtener texto descriptivo del estado
+     */
+    public function getStatusTextAttribute()
+    {
+        $statuses = [
+            'disponible' => 'Disponible',
+            'en_uso' => 'En Uso',
+            'en_reparacion' => 'En Reparación',
+            'mantenimiento' => 'En Mantenimiento'
+        ];
+
+        return $statuses[$this->status] ?? $this->status;
+    }
+
+    /**
+     * Obtener clase CSS del estado para badges
+     */
+    public function getStatusClassAttribute()
+    {
+        $classes = [
+            'disponible' => 'badge-success',
+            'en_uso' => 'badge-warning',
+            'en_reparacion' => 'badge-danger',
+            'mantenimiento' => 'badge-info'
+        ];
+
+        return $classes[$this->status] ?? 'badge-secondary';
+    }
+
+    /**
+     * Verificar si es bicicleta eléctrica
+     */
     public function getIsElectricAttribute()
     {
         return $this->type === 'electrica';
     }
 
-    public function getBatteryStatusAttribute()
+    /**
+     * Verificar si está disponible
+     */
+    public function getIsAvailableAttribute()
     {
-        if (!$this->is_electric) return null;
-
-        if ($this->battery_level >= 80) return 'alta';
-        if ($this->battery_level >= 50) return 'media';
-        if ($this->battery_level >= 20) return 'baja';
-        return 'critica';
+        return $this->status === 'disponible' && $this->is_active;
     }
 
-    public function getTotalUsageTimeAttribute()
+    /**
+     * Verificar si está en uso
+     */
+    public function getIsInUseAttribute()
     {
-        return $this->usageHistory()
-            ->where('status', 'completado')
-            ->sum('duration_minutes');
+        return $this->status === 'en_uso';
     }
 
-    // Métodos de utilidad
-    public function canBeRented()
+    /**
+     * Verificar si necesita mantenimiento
+     */
+    public function getNeedsMaintenanceAttribute()
     {
-        return $this->is_available &&
-            ($this->type === 'tradicional' || $this->battery_level > 20);
-    }
-
-    public function startUsage($userId, $stationId)
-    {
-        if (!$this->canBeRented()) {
-            throw new \Exception('Esta bicicleta no está disponible para alquiler');
+        if (!$this->last_maintenance) {
+            return true;
         }
 
-        // Cambiar estado a en uso
-        $this->update(['status' => 'en_uso']);
-
-        // Crear registro de uso
-        return BikeUsageHistory::create([
-            'user_id' => $userId,
-            'bike_id' => $this->id,
-            'start_station_id' => $stationId,
-            'start_time' => now(),
-            'status' => 'activo'
-        ]);
+        // Si hace más de 3 meses desde el último mantenimiento
+        return $this->last_maintenance->diffInMonths(now()) >= 3;
     }
 
-    public function endUsage($stationId, $notes = null)
+    /**
+     * Obtener nivel de batería con texto
+     */
+    public function getBatteryLevelTextAttribute()
     {
-        $currentUsage = $this->currentUsage;
-
-        if (!$currentUsage) {
-            throw new \Exception('No hay un uso activo para esta bicicleta');
+        if (!$this->is_electric || $this->battery_level === null) {
+            return 'N/A';
         }
 
-        $endTime = now();
-        $duration = $currentUsage->start_time->diffInMinutes($endTime);
+        return $this->battery_level . '%';
+    }
 
-        // Actualizar el registro de uso
-        $currentUsage->update([
-            'end_station_id' => $stationId,
-            'end_time' => $endTime,
-            'duration_minutes' => $duration,
-            'status' => 'completado',
-            'notes' => $notes
-        ]);
+    /**
+     * Obtener clase CSS para el nivel de batería
+     */
+    public function getBatteryClassAttribute()
+    {
+        if (!$this->is_electric || $this->battery_level === null) {
+            return '';
+        }
 
-        // Cambiar estado y estación de la bicicleta
+        if ($this->battery_level >= 80) {
+            return 'battery-high';
+        } elseif ($this->battery_level >= 50) {
+            return 'battery-medium';
+        } elseif ($this->battery_level >= 20) {
+            return 'battery-low';
+        } else {
+            return 'battery-critical';
+        }
+    }
+
+    /**
+     * Verificar si la batería está baja (solo para eléctricas)
+     */
+    public function getHasLowBatteryAttribute()
+    {
+        return $this->is_electric && $this->battery_level !== null && $this->battery_level < 20;
+    }
+
+    /**
+     * Calcular días desde el último mantenimiento
+     */
+    public function getDaysSinceMaintenanceAttribute()
+    {
+        if (!$this->last_maintenance) {
+            return null;
+        }
+
+        return $this->last_maintenance->diffInDays(now());
+    }
+
+    /**
+     * Obtener antigüedad de la bicicleta
+     */
+    public function getAgeInDaysAttribute()
+    {
+        if (!$this->purchase_date) {
+            return null;
+        }
+
+        return $this->purchase_date->diffInDays(now());
+    }
+
+    /**
+     * Verificar si puede ser asignada a una estación
+     */
+    public function canBeAssignedToStation()
+    {
+        return $this->is_active && in_array($this->status, ['disponible', 'mantenimiento']);
+    }
+
+    /**
+     * Verificar si puede ser puesta en uso
+     */
+    public function canBeUsed()
+    {
+        if (!$this->is_active || $this->status !== 'disponible') {
+            return false;
+        }
+
+        // Para bicicletas eléctricas, verificar nivel de batería
+        if ($this->is_electric && $this->battery_level !== null && $this->battery_level < 10) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Cambiar estado a disponible
+     */
+    public function makeAvailable()
+    {
+        $this->update(['status' => 'disponible']);
+    }
+
+    /**
+     * Cambiar estado a en uso
+     */
+    public function putInUse()
+    {
+        if ($this->canBeUsed()) {
+            $this->update(['status' => 'en_uso']);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Cambiar estado a mantenimiento
+     */
+    public function putInMaintenance()
+    {
         $this->update([
-            'status' => 'disponible',
-            'station_id' => $stationId
+            'status' => 'mantenimiento',
+            'last_maintenance' => now()
         ]);
-
-        return $currentUsage->fresh();
     }
 
-    public function reportDamage($userId, $description, $severity = 'leve', $photos = [])
+    /**
+     * Cambiar estado a reparación
+     */
+    public function putInRepair()
     {
-        // Crear reporte de daño
-        $report = DamageReport::create([
-            'user_id' => $userId,
-            'bike_id' => $this->id,
-            'description' => $description,
-            'severity' => $severity,
-            'photos' => $photos,
-            'status' => 'pendiente'
-        ]);
-
-        // Cambiar estado a en reparación
         $this->update(['status' => 'en_reparacion']);
-
-        return $report;
     }
 
-    public static function getTypeOptions()
+    /**
+     * Actualizar nivel de batería (solo para eléctricas)
+     */
+    public function updateBattery($level)
     {
-        return [
-            'tradicional' => 'Bicicleta Tradicional',
-            'electrica' => 'Bicicleta Eléctrica'
-        ];
+        if ($this->is_electric && $level >= 0 && $level <= 100) {
+            $this->update(['battery_level' => $level]);
+            return true;
+        }
+        return false;
     }
 
-    public static function getStatusOptions()
+    /**
+     * Asignar a estación
+     */
+    public function assignToStation($stationId)
     {
-        return [
-            'disponible' => 'Disponible',
-            'en_uso' => 'En Uso',
-            'en_reparacion' => 'En Reparación',
-            'mantenimiento' => 'Mantenimiento'
+        $station = Station::find($stationId);
+
+        if (!$station || !$station->canReceiveBike() || !$this->canBeAssignedToStation()) {
+            return false;
+        }
+
+        $this->update(['station_id' => $stationId]);
+        return true;
+    }
+
+    /**
+     * Remover de estación
+     */
+    public function removeFromStation()
+    {
+        $this->update(['station_id' => null]);
+    }
+
+    /**
+     * Obtener resumen de información
+     */
+    public function getSummaryAttribute()
+    {
+        $summary = [
+            'code' => $this->code,
+            'type' => $this->type_text,
+            'status' => $this->status_text,
+            'station' => $this->station ? $this->station->name : 'Sin asignar',
+            'is_active' => $this->is_active
         ];
+
+        if ($this->is_electric) {
+            $summary['battery'] = $this->battery_level_text;
+        }
+
+        if ($this->needs_maintenance) {
+            $summary['maintenance_warning'] = 'Requiere mantenimiento';
+        }
+
+        return $summary;
     }
 }

@@ -32,6 +32,9 @@ import Estacion from './components/Estacion.vue';
 app.component('estacion', Estacion);
 import  UserManagement from './components/UserManagement.vue';
 app.component('user-management', UserManagement);
+import Routes from "@/components/Routes.vue";
+app.component('Routes', Routes);
+
 
 
 /**

@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use App\Models\User;
+use Ramsey\Uuid\Rfc4122\Validator;
 
 class UserController extends Controller
 {
@@ -89,6 +90,63 @@ class UserController extends Controller
             'role' => $user->role
         ]);
     }
+    public function createUser(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'apellidos' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'dpi' => 'required|string|size:13|unique:users',
+            'fecha_nacimiento' => 'required|date|before:today',
+            'telefono' => 'nullable|string|max:20',
+            'password' => 'required|string|min:6',
+            'foto' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $userData = [
+                'name' => $request->name,
+                'apellidos' => $request->apellidos,
+                'email' => $request->email,
+                'dpi' => $request->dpi,
+                'fecha_nacimiento' => $request->fecha_nacimiento,
+                'telefono' => $request->telefono,
+                'password' => Hash::make($request->password),
+                'role' => 'user' // Rol de usuario regular
+            ];
+
+            // Manejar foto si se proporciona
+            if ($request->hasFile('foto')) {
+                $foto = $request->file('foto');
+                $fotoName = time() . '_' . uniqid() . '.' . $foto->getClientOriginalExtension();
+                $fotoPath = $foto->storeAs('users/photos', $fotoName, 'public');
+                $userData['foto_url'] = Storage::url($fotoPath);
+            }
+
+            $user = User::create($userData);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Usuario creado exitosamente',
+                'user' => $user
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Error al crear el usuario: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+
 
     public function logout()
     {

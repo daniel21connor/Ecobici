@@ -162,4 +162,8 @@ class User extends Authenticatable
 
         return true; // Por ahora retorna true
     }
+    public function routes()
+    {
+        return $this->hasMany(\App\Models\Route::class);
+    }
 }
