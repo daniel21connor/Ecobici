@@ -11,6 +11,8 @@ class Bike extends Model
 
     protected $fillable = [
         'code',
+        'brand',
+        'model',
         'type',
         'status',
         'station_id',

@@ -16,6 +16,7 @@ class DamageReportController extends Controller
         $this->middleware('auth');
     }
 
+
     /**
      * Obtener todos los reportes (admin) o del usuario actual
      */
@@ -23,43 +24,40 @@ class DamageReportController extends Controller
     {
         try {
             $user = Auth::user();
-            $query = DamageReport::with(['user', 'bike', 'resolver']);
 
-            // Si no es admin, solo mostrar sus reportes
+            $query = DamageReport::with(['bike.station', 'user']);
+
+            // Si no es admin, solo sus reportes
             if ($user->role !== 'admin') {
-                $query->byUser($user->id);
+                $query->where('user_id', $user->id);
             }
 
-            // Filtros
-            if ($request->has('status') && $request->status !== '') {
+            // Aplicar filtros
+            if ($request->filled('status')) {
                 $query->where('status', $request->status);
             }
 
-            if ($request->has('severity') && $request->severity !== '') {
+            if ($request->filled('severity')) {
                 $query->where('severity', $request->severity);
             }
 
-            if ($request->has('bike_id') && $request->bike_id !== '') {
+            if ($request->filled('bike_id')) {
                 $query->where('bike_id', $request->bike_id);
             }
 
-            // Ordenamiento
-            $sortBy = $request->get('sort_by', 'created_at');
-            $sortOrder = $request->get('sort_order', 'desc');
-            $query->orderBy($sortBy, $sortOrder);
-
-            $reports = $query->paginate(15);
+            $reports = $query->orderBy('created_at', 'desc')->paginate(15);
 
             return response()->json([
                 'success' => true,
-                'reports' => $reports,
-                'user_role' => $user->role
+                'reports' => $reports
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Error en DamageReportController@index: ' . $e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error al obtener los reportes: ' . $e->getMessage()
+                'message' => 'Error al cargar reportes: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -70,62 +68,47 @@ class DamageReportController extends Controller
     public function store(Request $request)
     {
         try {
-            $validated = $request->validate([
-                'bike_id' => 'required|exists:bikes,id',
-                'description' => 'required|string|max:1000',
-                'severity' => ['required', Rule::in(['leve', 'moderado', 'grave'])],
-                'photos' => 'nullable|array|max:5',
-                'photos.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048'
-            ]);
-
             $user = Auth::user();
 
-            // Verificar que el usuario tenga una bicicleta o que sea admin
-            if ($user->role !== 'admin') {
-                $bike = Bike::where('id', $validated['bike_id'])
-                    ->where('user_id', $user->id)
-                    ->first();
-
-                if (!$bike) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'No tienes permisos para reportar daños en esta bicicleta'
-                    ], 403);
-                }
-            }
-
-            // Procesar fotos
-            $photosPaths = [];
-            if ($request->hasFile('photos')) {
-                foreach ($request->file('photos') as $photo) {
-                    $path = $photo->store('damage-reports', 'public');
-                    $photosPaths[] = $path;
-                }
-            }
-
-            $report = DamageReport::create([
-                'user_id' => $user->id,
-                'bike_id' => $validated['bike_id'],
-                'description' => $validated['description'],
-                'severity' => $validated['severity'],
-                'photos' => $photosPaths
+            $validatedData = $request->validate([
+                'bike_id' => 'required|exists:bikes,id',
+                'description' => 'required|string|max:1000',
+                'severity' => 'required|in:leve,moderado,grave',
+                'photos.*' => 'nullable|image|max:2048'
             ]);
 
-            $report->load(['user', 'bike', 'resolver']);
+            $reportData = [
+                'user_id' => $user->id,
+                'bike_id' => $validatedData['bike_id'],
+                'description' => $validatedData['description'],
+                'severity' => $validatedData['severity'],
+                'status' => 'pendiente'
+            ];
+
+            $report = DamageReport::create($reportData);
+
+            // Procesar fotos si existen
+            if ($request->hasFile('photos')) {
+                $photos = [];
+                foreach ($request->file('photos') as $photo) {
+                    $path = $photo->store('damage_reports', 'public');
+                    $photos[] = $path;
+                }
+                $report->photos = $photos;
+                $report->save();
+            }
+
+            $report->load(['bike.station', 'user']);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Reporte creado exitosamente',
                 'report' => $report
-            ], 201);
+            ]);
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error de validación',
-                'errors' => $e->errors()
-            ], 422);
         } catch (\Exception $e) {
+            Log::error('Error en DamageReportController@store: ' . $e->getMessage());
+
             return response()->json([
                 'success' => false,
                 'message' => 'Error al crear el reporte: ' . $e->getMessage()

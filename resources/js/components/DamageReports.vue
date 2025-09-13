@@ -218,7 +218,8 @@
                         <select v-model="form.bike_id" required>
                             <option value="">Selecciona una bicicleta</option>
                             <option v-for="bike in availableBikes" :key="bike.id" :value="bike.id">
-                                {{ bike.brand }} {{ bike.model }}
+                                {{ bike.code || 'Sin código' }}
+                                {{ bike.type || 'Sin modelo' }}
                                 <span v-if="isAdmin && bike.user"> - {{ bike.user.name }}</span>
                             </option>
                         </select>
@@ -417,16 +418,28 @@ export default {
     methods: {
         async initialize() {
             try {
+                console.log('Inicializando componente de reportes...');
+
                 // Verificar si el usuario es admin
                 const userResponse = await axios.get('/user');
+                console.log('Respuesta del usuario:', userResponse.data);
+
                 this.isAdmin = userResponse.data.role === 'admin' ||
                     (userResponse.data.user && userResponse.data.user.role === 'admin');
 
-                await Promise.all([
-                    this.loadReports(),
-                    this.loadAvailableBikes(),
-                    this.isAdmin ? this.loadStatistics() : Promise.resolve()
-                ]);
+                console.log('Usuario es admin:', this.isAdmin);
+
+                // Cargar bicicletas primero para debugging
+                console.log('Cargando bicicletas...');
+                await this.loadAvailableBikes();
+
+                console.log('Cargando reportes...');
+                await this.loadReports();
+
+                if (this.isAdmin) {
+                    console.log('Cargando estadísticas...');
+                    await this.loadStatistics();
+                }
 
             } catch (error) {
                 console.error('Error inicializando:', error);
@@ -463,12 +476,24 @@ export default {
 
         async loadAvailableBikes() {
             try {
-                const response = await axios.get('/damage-reports/bikes');
+                console.log('Cargando bicicletas disponibles...'); // Debug
+
+                // Usar el endpoint existente del BikeController
+                const response = await axios.get('/bikes/data');
+
+                console.log('Respuesta de bicicletas:', response.data); // Debug
+
                 if (response.data.success) {
                     this.availableBikes = response.data.bikes;
+                    console.log('Bicicletas cargadas:', this.availableBikes.length); // Debug
+                } else {
+                    console.error('Error en respuesta de bicicletas:', response.data.message);
+                    this.showError('Error al cargar las bicicletas disponibles');
                 }
             } catch (error) {
                 console.error('Error cargando bicicletas:', error);
+                console.error('Response data:', error.response?.data);
+                this.showError('Error al cargar las bicicletas: ' + (error.response?.data?.message || error.message));
             }
         },
 

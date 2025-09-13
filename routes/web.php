@@ -169,6 +169,13 @@ Route::middleware(['auth'])->group(function () {
 });
 //Rutas de Bicicletas
 Route::middleware(['auth'])->group(function () {
+    // Rutas que todos los usuarios autenticados pueden acceder
+    Route::get('/bikes', [BikeController::class, 'index'])->name('bikes.index');
+    Route::get('/bikes/data', [BikeController::class, 'getData'])->name('bikes.data');
+
+    // Rutas específicas van antes que las rutas con parámetros
+    Route::get('/bikes/create', [BikeController::class, 'create'])->name('bikes.create');
+
     // Primero las rutas fijas
     Route::get('damage-reports/bikes', [DamageReportController::class, 'getAvailableBikes'])->name('damage-reports.bikes');
     Route::get('damage-reports/statistics', [DamageReportController::class, 'statistics'])->name('damage-reports.statistics');
