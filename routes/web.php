@@ -68,10 +68,25 @@ Route::middleware(['web', 'auth'])->prefix('api')->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware([ 'auth'])->prefix('api')->group(function () {
+
+    // Usuario autenticado
+    Route::get('/user', function (Request $request) {
+        return response()->json([
+            'success' => true,
+            'user' => $request->user()
+        ]);
+    });
+
+    // Rutas de membresías
+    Route::prefix('memberships')->group(function () {
+        Route::get('/current', [MembershipController::class, 'getCurrentMembership']);
+        Route::get('/user', [MembershipController::class, 'getUserMemberships']);
+        Route::post('/check-access', [MembershipController::class, 'checkAccess']);
+    });
 
     // ===============================
-    // MÓDULO 3 - ESTACIONES Y BICICLETAS
+    // ESTACIONES Y BICICLETAS
     // ===============================
 
     // Estaciones - RF-04
@@ -80,7 +95,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/types', [StationController::class, 'getTypeOptions']);
         Route::get('/statistics', [StationController::class, 'getStatistics']);
         Route::get('/{station}', [StationController::class, 'show']);
-        Route::get('/{station}/bikes', [StationController::class, 'getAvailableBikes']);
+        Route::get('/{station}/available-bikes', [StationController::class, 'getAvailableBikes']);
 
         // Rutas solo para administradores
         Route::middleware('admin')->group(function () {
@@ -112,7 +127,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // ===============================
-    // MÓDULO 4 - USO DE BICICLETAS
+    // USO DE BICICLETAS
     // ===============================
 
     // Historial de uso - RF-07

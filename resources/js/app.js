@@ -28,6 +28,10 @@ import DashboardComponent from './components/Dashboard.vue';
 app.component('dashboard', DashboardComponent);
 import MembershipPayment from "@/components/MembershipPayment.vue";
 app.component('membership-payment', MembershipPayment);
+import Estacion from './components/Estacion.vue';
+app.component('estacion', Estacion);
+import  UserManagement from './components/UserManagement.vue';
+app.component('user-management', UserManagement);
 
 
 /**
