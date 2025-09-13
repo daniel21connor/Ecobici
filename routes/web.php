@@ -2,7 +2,7 @@
 
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\MembershipController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -24,4 +24,28 @@ Route::middleware('auth')->group(function () {
     Route::get('/user', [UserController::class, 'getUser']);
     Route::get('/users-catalog', [UserController::class, 'getUsersCatalog']);
     Route::post('/create-admin', [UserController::class, 'createAdmin']);
+});
+
+
+Route::middleware(['auth'])->group(function () {
+
+    // Vista principal de membresías
+    Route::get('/memberships', [MembershipController::class, 'index'])->name('memberships.index');
+
+    // ===== RUTAS AJAX PARA MEMBRESÍAS (cambiar de /api a rutas web) =====
+
+    // Obtener planes disponibles
+    Route::get('/memberships/plans', [MembershipController::class, 'getPlans'])->name('memberships.plans');
+
+    // Obtener membresía actual del usuario
+    Route::get('/memberships/current', [MembershipController::class, 'getCurrentMembership'])->name('memberships.current');
+
+    // Procesar pago de membresía
+    Route::post('/memberships/payment', [MembershipController::class, 'processPayment'])->name('memberships.payment');
+
+    // Cancelar membresía activa
+    Route::post('/memberships/cancel', [MembershipController::class, 'cancelMembership'])->name('memberships.cancel');
+
+    // Obtener historial de membresías
+    Route::get('/memberships/history', [MembershipController::class, 'getMembershipHistory'])->name('memberships.history');
 });

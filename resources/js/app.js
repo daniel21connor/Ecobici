@@ -26,6 +26,8 @@ import LoginComponent from './components/Login.vue';
 app.component('login-component', LoginComponent);
 import DashboardComponent from './components/Dashboard.vue';
 app.component('dashboard', DashboardComponent);
+import MembershipPayment from "@/components/MembershipPayment.vue";
+app.component('membership-payment', MembershipPayment);
 
 /**
  * The following block of code may be used to automatically register your
