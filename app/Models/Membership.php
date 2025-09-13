@@ -98,48 +98,104 @@ class Membership extends Model
         $plans = [
             'basic' => [
                 'name' => 'Plan Básico',
-                'price' => 9.99,
-                'duration_months' => 1,
+                'price' => 15.00,
+                'yearly_price' => 150.00,
+                'duration_days' => 30,
+                'description' => 'Perfecto para usuarios ocasionales que necesitan funciones básicas',
+                'color' => 'emerald',
+                'color_hex' => '#10B981',
+                'bg_class' => 'bg-emerald-50',
+                'border_class' => 'border-emerald-200',
+                'text_class' => 'text-emerald-600',
+                'button_class' => 'bg-emerald-500 hover:bg-emerald-600',
+                'icon' => '🌱',
+                'popular' => false,
                 'features' => [
                     'Acceso básico al sistema',
+                    'Registro de hasta 2 bicicletas',
                     'Soporte por email',
-                    '2 bicicletas registradas',
-                    'Reportes básicos'
+                    'Reportes básicos',
+                    'Panel de usuario estándar'
                 ],
-                'color' => '#28a745'
+                'limits' => [
+                    'bikes' => 2,
+                    'reports' => 'basic',
+                    'support' => 'email'
+                ]
             ],
             'premium' => [
                 'name' => 'Plan Premium',
-                'price' => 19.99,
-                'duration_months' => 1,
+                'price' => 35.00,
+                'yearly_price' => 350.00,
+                'duration_days' => 30,
+                'description' => 'La opción más popular para usuarios regulares',
+                'color' => 'blue',
+                'color_hex' => '#3B82F6',
+                'bg_class' => 'bg-blue-50',
+                'border_class' => 'border-blue-200',
+                'text_class' => 'text-blue-600',
+                'button_class' => 'bg-blue-500 hover:bg-blue-600',
+                'icon' => '⭐',
+                'popular' => true,
                 'features' => [
                     'Acceso completo al sistema',
+                    'Registro de hasta 5 bicicletas',
                     'Soporte prioritario',
-                    '5 bicicletas registradas',
                     'Reportes avanzados',
-                    'Notificaciones en tiempo real'
+                    'Notificaciones en tiempo real',
+                    'Panel de control avanzado',
+                    'Exportación de datos'
                 ],
-                'color' => '#007bff'
+                'limits' => [
+                    'bikes' => 5,
+                    'reports' => 'advanced',
+                    'support' => 'priority'
+                ]
             ],
             'vip' => [
                 'name' => 'Plan VIP',
-                'price' => 39.99,
-                'duration_months' => 1,
+                'price' => 65.00,
+                'yearly_price' => 650.00,
+                'duration_days' => 30,
+                'description' => 'Para usuarios profesionales que necesitan acceso completo',
+                'color' => 'purple',
+                'color_hex' => '#8B5CF6',
+                'bg_class' => 'bg-purple-50',
+                'border_class' => 'border-purple-200',
+                'text_class' => 'text-purple-600',
+                'button_class' => 'bg-purple-500 hover:bg-purple-600',
+                'icon' => '👑',
+                'popular' => false,
                 'features' => [
-                    'Acceso premium completo',
-                    'Soporte 24/7',
+                    'Acceso completo al sistema',
                     'Bicicletas ilimitadas',
+                    'Soporte 24/7',
                     'Reportes personalizados',
-                    'API access',
-                    'Funciones exclusivas'
+                    'Acceso a API',
+                    'Características exclusivas',
+                    'Asesor personal dedicado',
+                    'Actualizaciones prioritarias'
                 ],
-                'color' => '#ffc107'
+                'limits' => [
+                    'bikes' => -1, // Ilimitado
+                    'reports' => 'custom',
+                    'support' => '24_7'
+                ]
             ]
         ];
 
         return $plans[$planType] ?? null;
     }
 
+
+    public static function getAvailablePlans()
+    {
+        return [
+            'basic' => self::getPlanConfig('basic'),
+            'premium' => self::getPlanConfig('premium'),
+            'vip' => self::getPlanConfig('vip')
+        ];
+    }
     public function getPlanInfo()
     {
         return self::getPlanConfig($this->plan_type);

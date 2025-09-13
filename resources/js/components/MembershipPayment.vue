@@ -64,116 +64,88 @@
                     </div>
                 </div>
 
-                <!-- VISTA DE PAGO -->
+                <!-- VISTA DE PAGO (OPTIMIZADA) -->
                 <div v-else-if="currentView === 'payment'" key="payment" class="membership-card payment-card">
                     <div class="payment-header">
                         <button @click="goBack" class="back-btn">← Volver</button>
                         <h2>Procesar Pago</h2>
                     </div>
 
-                    <!-- Resumen del Plan -->
-                    <div class="plan-summary">
-                        <div class="summary-content">
-                            <h3>{{ selectedPlan.name }}</h3>
-                            <div class="summary-price">
-                                <span class="total">Total: Q{{ selectedPlan.price }}</span>
-                            </div>
-                            <div class="summary-features">
-                                <p><strong>Incluye:</strong></p>
-                                <ul>
-                                    <li v-for="feature in selectedPlan.features.slice(0, 3)" :key="feature">
-                                        {{ feature }}
-                                    </li>
-                                    <li v-if="selectedPlan.features.length > 3">
-                                        + {{ selectedPlan.features.length - 3 }} más...
-                                    </li>
-                                </ul>
-                            </div>
+                    <!-- Resumen del Plan (Compacto) -->
+                    <div class="plan-summary-compact">
+                        <div class="summary-row">
+                            <span class="plan-name">{{ selectedPlan.name }}</span>
+                            <span class="plan-price">Q{{ selectedPlan.price }}/mes</span>
                         </div>
                     </div>
 
                     <!-- Formulario de Pago -->
                     <form @submit.prevent="processPayment" class="payment-form">
-                        <!-- Método de Pago -->
+                        <!-- Método de Pago Compacto -->
                         <div class="form-group">
                             <label>Método de Pago</label>
-                            <div class="payment-methods">
-                                <label class="payment-method" :class="{ active: paymentData.payment_method === 'credit_card' }">
+                            <div class="payment-methods-compact">
+                                <label class="payment-method-compact" :class="{ active: paymentData.payment_method === 'credit_card' }">
                                     <input type="radio" v-model="paymentData.payment_method" value="credit_card" />
-                                    <div class="method-content">
-                                        <span class="method-icon">💳</span>
-                                        <span>Tarjeta de Crédito</span>
-                                    </div>
+                                    <span class="method-icon">💳</span>
+                                    <span class="method-text">Crédito</span>
                                 </label>
 
-                                <label class="payment-method" :class="{ active: paymentData.payment_method === 'debit_card' }">
+                                <label class="payment-method-compact" :class="{ active: paymentData.payment_method === 'debit_card' }">
                                     <input type="radio" v-model="paymentData.payment_method" value="debit_card" />
-                                    <div class="method-content">
-                                        <span class="method-icon">💳</span>
-                                        <span>Tarjeta de Débito</span>
-                                    </div>
+                                    <span class="method-icon">💳</span>
+                                    <span class="method-text">Débito</span>
                                 </label>
 
-                                <label class="payment-method" :class="{ active: paymentData.payment_method === 'paypal' }">
+                                <label class="payment-method-compact" :class="{ active: paymentData.payment_method === 'paypal' }">
                                     <input type="radio" v-model="paymentData.payment_method" value="paypal" />
-                                    <div class="method-content">
-                                        <span class="method-icon">📧</span>
-                                        <span>PayPal</span>
-                                    </div>
+                                    <span class="method-icon">📧</span>
+                                    <span class="method-text">PayPal</span>
                                 </label>
 
-                                <label class="payment-method" :class="{ active: paymentData.payment_method === 'bank_transfer' }">
+                                <label class="payment-method-compact" :class="{ active: paymentData.payment_method === 'bank_transfer' }">
                                     <input type="radio" v-model="paymentData.payment_method" value="bank_transfer" />
-                                    <div class="method-content">
-                                        <span class="method-icon">🏦</span>
-                                        <span>Transferencia</span>
-                                    </div>
+                                    <span class="method-icon">🏦</span>
+                                    <span class="method-text">Banco</span>
                                 </label>
                             </div>
                         </div>
 
-                        <!-- Datos de Tarjeta -->
-                        <div v-if="['credit_card', 'debit_card'].includes(paymentData.payment_method)" class="card-section">
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Número de Tarjeta</label>
-                                    <input
-                                        type="text"
-                                        v-model="paymentData.card_number"
-                                        class="form-control"
-                                        placeholder="1234 5678 9012 3456"
-                                        maxlength="16"
-                                        @input="formatCardNumber"
-                                        :disabled="loading"
-                                        required
-                                    />
-                                    <small class="card-test-info">
-                                        💡 Usa 4000000000000002 para simular rechazo
-                                    </small>
-                                </div>
+                        <!-- Datos de Tarjeta (Compacto) -->
+                        <div v-if="['credit_card', 'debit_card'].includes(paymentData.payment_method)" class="card-section-compact">
+                            <div class="form-group">
+                                <label>Número de Tarjeta</label>
+                                <input
+                                    type="text"
+                                    v-model="paymentData.card_number"
+                                    class="form-control-compact"
+                                    placeholder="1234 5678 9012 3456"
+                                    maxlength="16"
+                                    @input="formatCardNumber"
+                                    :disabled="loading"
+                                    required
+                                />
                             </div>
 
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Nombre en la Tarjeta</label>
-                                    <input
-                                        type="text"
-                                        v-model="paymentData.card_name"
-                                        class="form-control"
-                                        placeholder="Juan Pérez"
-                                        :disabled="loading"
-                                        required
-                                    />
-                                </div>
+                            <div class="form-group">
+                                <label>Titular</label>
+                                <input
+                                    type="text"
+                                    v-model="paymentData.card_name"
+                                    class="form-control-compact"
+                                    placeholder="Juan Pérez"
+                                    :disabled="loading"
+                                    required
+                                />
                             </div>
 
-                            <div class="form-row">
+                            <div class="form-row-compact">
                                 <div class="form-group">
-                                    <label>Fecha de Expiración</label>
+                                    <label>Vencimiento</label>
                                     <input
                                         type="text"
                                         v-model="paymentData.card_expiry"
-                                        class="form-control"
+                                        class="form-control-compact"
                                         placeholder="MM/AA"
                                         maxlength="5"
                                         @input="formatExpiry"
@@ -186,7 +158,7 @@
                                     <input
                                         type="text"
                                         v-model="paymentData.card_cvv"
-                                        class="form-control"
+                                        class="form-control-compact"
                                         placeholder="123"
                                         maxlength="4"
                                         :disabled="loading"
@@ -197,13 +169,13 @@
                         </div>
 
                         <!-- PayPal -->
-                        <div v-else-if="paymentData.payment_method === 'paypal'" class="paypal-section">
+                        <div v-else-if="paymentData.payment_method === 'paypal'" class="other-method-compact">
                             <div class="form-group">
                                 <label>Email de PayPal</label>
                                 <input
                                     type="email"
                                     v-model="paymentData.paypal_email"
-                                    class="form-control"
+                                    class="form-control-compact"
                                     placeholder="tu@paypal.com"
                                     :disabled="loading"
                                     required
@@ -212,13 +184,13 @@
                         </div>
 
                         <!-- Transferencia Bancaria -->
-                        <div v-else-if="paymentData.payment_method === 'bank_transfer'" class="bank-section">
+                        <div v-else-if="paymentData.payment_method === 'bank_transfer'" class="other-method-compact">
                             <div class="form-group">
                                 <label>Número de Cuenta</label>
                                 <input
                                     type="text"
                                     v-model="paymentData.bank_account"
-                                    class="form-control"
+                                    class="form-control-compact"
                                     placeholder="1234567890"
                                     :disabled="loading"
                                     required
@@ -226,32 +198,31 @@
                             </div>
                         </div>
 
-                        <!-- Captcha de Seguridad -->
-                        <div class="security-section">
-                            <label>Verificación de Seguridad</label>
-                            <div class="security-captcha">
-                                <span class="captcha-question">{{ securityQuestion }}</span>
+                        <!-- Captcha Compacto -->
+                        <div class="security-section-compact">
+                            <label>Verificación: {{ securityQuestion }}</label>
+                            <div class="security-input-row">
                                 <input
                                     type="number"
                                     v-model="securityAnswer"
-                                    class="form-control captcha-input"
-                                    placeholder="Resultado"
+                                    class="form-control-compact captcha-input-compact"
+                                    placeholder="?"
                                     :disabled="loading"
                                     required
                                 />
-                                <button type="button" @click="generateSecurityQuestion" class="refresh-btn" :disabled="loading">
+                                <button type="button" @click="generateSecurityQuestion" class="refresh-btn-compact" :disabled="loading">
                                     🔄
                                 </button>
                             </div>
                         </div>
 
-                        <div v-if="error" class="error-message">
-                            ❌ {{ error }}
+                        <div v-if="error" class="error-message-compact">
+                            {{ error }}
                         </div>
 
-                        <button type="submit" class="btn-pay" :disabled="loading || !isFormValid">
+                        <button type="submit" class="btn-pay-compact" :disabled="loading || !isFormValid">
                             <span v-if="loading">Procesando...</span>
-                            <span v-else>💳 Pagar Q{{ selectedPlan.price }}</span>
+                            <span v-else>Pagar Q{{ selectedPlan.price }}</span>
                         </button>
                     </form>
                 </div>
@@ -523,16 +494,6 @@ export default {
             return parseInt(this.securityAnswer) === this.correctSecurityAnswer;
         },
 
-        async getCSRFToken() {
-            try {
-                const response = await fetch('/sanctum/csrf-cookie');
-                return response.ok;
-            } catch (error) {
-                console.error('Error obteniendo CSRF token:', error);
-                return false;
-            }
-        },
-
         // ===== FORMATEO DE CAMPOS =====
         formatCardNumber(event) {
             let value = event.target.value.replace(/\D/g, '');
@@ -651,9 +612,11 @@ html, body {
     backdrop-filter: blur(10px);
 }
 
+/* MODAL DE PAGO OPTIMIZADO */
 .payment-card {
-    max-width: 600px;
+    max-width: 450px;
     margin: 0 auto;
+    padding: 20px;
 }
 
 .success-card, .history-card {
@@ -685,6 +648,230 @@ html, body {
 .subtitle {
     color: #666;
     font-size: 1.1rem;
+}
+
+/* Encabezado de pago e historial */
+.payment-header, .history-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.back-btn {
+    background: none;
+    border: 2px solid #667eea;
+    color: #667eea;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 0.9rem;
+}
+
+.back-btn:hover {
+    background: #667eea;
+    color: white;
+}
+
+/* Resumen compacto del plan */
+.plan-summary-compact {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.plan-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.plan-price {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #28a745;
+}
+
+/* Métodos de pago compactos */
+.payment-methods-compact {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.payment-method-compact {
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 10px 5px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-align: center;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.payment-method-compact:hover {
+    border-color: #667eea;
+}
+
+.payment-method-compact.active {
+    border-color: #667eea;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+}
+
+.payment-method-compact input {
+    display: none;
+}
+
+.method-icon {
+    font-size: 1.2rem;
+}
+
+.method-text {
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+/* Formularios compactos */
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #333;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.form-row-compact {
+    display: flex;
+    gap: 10px;
+}
+
+.form-row-compact .form-group {
+    flex: 1;
+}
+
+.form-control-compact {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #e9ecef;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    transition: border-color 0.3s;
+}
+
+.form-control-compact:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.form-control-compact:disabled {
+    background-color: #f8f9fa;
+    cursor: not-allowed;
+}
+
+/* Secciones de métodos compactas */
+.card-section-compact, .other-method-compact {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+/* Captcha compacto */
+.security-section-compact {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.security-section-compact label {
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+}
+
+.security-input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.captcha-input-compact {
+    max-width: 80px;
+    text-align: center;
+}
+
+.refresh-btn-compact {
+    background: none;
+    border: 2px solid #667eea;
+    border-radius: 6px;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 0.9rem;
+}
+
+.refresh-btn-compact:hover:not(:disabled) {
+    background: #667eea;
+    color: white;
+}
+
+/* Botones optimizados */
+.btn-pay-compact {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-pay-compact:hover:not(:disabled) {
+    background: linear-gradient(135deg, #20c997, #28a745);
+    transform: translateY(-1px);
+}
+
+.btn-pay-compact:disabled {
+    background: #cccccc;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Mensaje de error compacto */
+.error-message-compact {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    border: 1px solid #f5c6cb;
+    font-size: 0.9rem;
 }
 
 /* Membresía Actual */
@@ -735,13 +922,13 @@ html, body {
 
 .days-remaining {
     font-weight: bold;
-    font-size: 1.1rem;
+    margin-top: 5px;
 }
 
 .btn-secondary {
     background: rgba(255, 255, 255, 0.2);
     color: white;
-    border: 2px solid white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
     padding: 10px 20px;
     border-radius: 8px;
     cursor: pointer;
@@ -749,44 +936,44 @@ html, body {
 }
 
 .btn-secondary:hover {
-    background: white;
-    color: #28a745;
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
 }
 
-/* Planes Grid */
+/* Grid de Planes */
 .plans-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 20px;
-    margin-bottom: 20px;
+    margin-top: 30px;
 }
 
 .plan-card {
-    border: 3px solid transparent;
-    border-radius: 15px;
+    background: white;
+    border: 3px solid #e9ecef;
+    border-radius: 12px;
     overflow: hidden;
     cursor: pointer;
     transition: all 0.3s ease;
-    background: white;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     position: relative;
+    transform: translateY(0);
 }
 
 .plan-card:hover {
+    border-color: #667eea;
     transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
 }
 
 .plan-popular {
     border-color: #ffc107;
-    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(255, 193, 7, 0.3);
 }
 
 .popular-badge {
     position: absolute;
     top: -10px;
-    left: 50%;
-    transform: translateX(-50%);
+    right: 20px;
     background: #ffc107;
     color: #000;
     padding: 5px 15px;
@@ -797,13 +984,14 @@ html, body {
 }
 
 .plan-header {
+    padding: 30px 20px;
     color: white;
-    padding: 25px 20px;
     text-align: center;
+    background: linear-gradient(135deg, #667eea, #764ba2);
 }
 
 .plan-header h3 {
-    font-size: 1.4rem;
+    font-size: 1.5rem;
     margin-bottom: 15px;
 }
 
@@ -819,7 +1007,7 @@ html, body {
 }
 
 .amount {
-    font-size: 3rem;
+    font-size: 2.5rem;
     font-weight: bold;
 }
 
@@ -834,13 +1022,12 @@ html, body {
 
 .plan-features ul {
     list-style: none;
-    space-y: 10px;
 }
 
 .plan-features li {
-    padding: 8px 0;
+    padding: 3px 0;
     font-size: 0.95rem;
-    color: #333;
+    color: #555;
 }
 
 .btn-plan {
@@ -849,8 +1036,8 @@ html, body {
     background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
     border: none;
-    font-weight: bold;
     font-size: 1rem;
+    font-weight: bold;
     cursor: pointer;
     transition: all 0.3s;
 }
@@ -859,249 +1046,7 @@ html, body {
     background: linear-gradient(135deg, #764ba2, #667eea);
 }
 
-/* Payment Form */
-.payment-header, .history-header {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    margin-bottom: 25px;
-    padding-bottom: 15px;
-    border-bottom: 2px solid #f0f0f0;
-}
-
-.back-btn {
-    background: none;
-    border: none;
-    font-size: 1.1rem;
-    color: #667eea;
-    cursor: pointer;
-    transition: color 0.3s;
-}
-
-.back-btn:hover {
-    color: #764ba2;
-}
-
-.plan-summary {
-    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 25px;
-}
-
-.summary-content h3 {
-    color: #333;
-    margin-bottom: 10px;
-}
-
-.summary-price {
-    font-size: 1.3rem;
-    font-weight: bold;
-    color: #28a745;
-    margin-bottom: 15px;
-}
-
-.summary-features {
-    font-size: 0.9rem;
-    color: #666;
-}
-
-.summary-features ul {
-    list-style: none;
-    margin-top: 5px;
-}
-
-.summary-features li {
-    padding: 2px 0;
-}
-
-/* Payment Methods */
-.payment-methods {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 10px;
-    margin-top: 10px;
-}
-
-.payment-method {
-    border: 2px solid #e9ecef;
-    border-radius: 8px;
-    padding: 15px 10px;
-    cursor: pointer;
-    transition: all 0.3s;
-    text-align: center;
-    background: white;
-}
-
-.payment-method:hover {
-    border-color: #667eea;
-}
-
-.payment-method.active {
-    border-color: #667eea;
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
-}
-
-.payment-method input {
-    display: none;
-}
-
-.method-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-}
-
-.method-icon {
-    font-size: 1.5rem;
-}
-
-/* Form Elements */
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    color: #333;
-    font-weight: 500;
-}
-
-.form-row {
-    display: flex;
-    gap: 15px;
-}
-
-.form-row .form-group {
-    flex: 1;
-}
-
-.form-control {
-    width: 100%;
-    padding: 12px;
-    border: 2px solid #e9ecef;
-    border-radius: 8px;
-    font-size: 1rem;
-    transition: border-color 0.3s;
-}
-
-.form-control:focus {
-    outline: none;
-    border-color: #667eea;
-}
-
-.form-control:disabled {
-    background-color: #f8f9fa;
-    cursor: not-allowed;
-}
-
-.card-test-info {
-    display: block;
-    font-size: 0.75rem;
-    color: #6c757d;
-    margin-top: 8px;
-    padding: 8px;
-    background: #f8f9fa;
-    border-left: 3px solid #17a2b8;
-    border-radius: 4px;
-    line-height: 1.4;
-}
-
-/* Security Section */
-.security-section {
-    background: #f8f9fa;
-    padding: 20px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-}
-
-.security-captcha {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    margin-top: 10px;
-}
-
-.captcha-question {
-    font-size: 1.2rem;
-    font-weight: bold;
-    color: #333;
-    min-width: 120px;
-}
-
-.captcha-input {
-    max-width: 100px;
-    text-align: center;
-}
-
-.refresh-btn {
-    background: none;
-    border: 2px solid #667eea;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-
-.refresh-btn:hover:not(:disabled) {
-    background: #667eea;
-}
-
-.refresh-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-/* Buttons */
-.btn-pay {
-    width: 100%;
-    padding: 15px;
-    background: linear-gradient(135deg, #28a745, #20c997);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 1.1rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s;
-    margin-top: 10px;
-}
-
-.btn-pay:hover:not(:disabled) {
-    background: linear-gradient(135deg, #20c997, #28a745);
-    transform: translateY(-2px);
-}
-
-.btn-pay:disabled {
-    background: #cccccc;
-    cursor: not-allowed;
-    transform: none;
-}
-
-.btn-continue {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white;
-    border: none;
-    padding: 12px 30px;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-
-.btn-continue:hover {
-    background: linear-gradient(135deg, #764ba2, #667eea);
-    transform: translateY(-2px);
-}
-
-/* Success Page */
+/* Vista de Éxito */
 .success-content {
     text-align: center;
     padding: 20px;
@@ -1114,55 +1059,77 @@ html, body {
 
 .success-content h2 {
     color: #28a745;
-    margin-bottom: 15px;
     font-size: 2rem;
+    margin-bottom: 15px;
 }
 
 .success-content p {
     color: #666;
     font-size: 1.1rem;
-    margin-bottom: 25px;
+    margin-bottom: 30px;
 }
 
 .success-details {
     background: #f8f9fa;
-    border-radius: 8px;
+    border-radius: 10px;
     padding: 20px;
-    margin-bottom: 25px;
+    margin: 30px 0;
     text-align: left;
 }
 
 .detail-item {
-    padding: 8px 0;
-    border-bottom: 1px solid #e9ecef;
     display: flex;
     justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #e9ecef;
 }
 
 .detail-item:last-child {
     border-bottom: none;
 }
 
-/* History */
+.btn-continue {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    border: none;
+    padding: 15px 40px;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-continue:hover {
+    background: linear-gradient(135deg, #20c997, #28a745);
+    transform: translateY(-2px);
+}
+
+/* Vista de Historial */
 .empty-history {
     text-align: center;
-    padding: 40px;
     color: #666;
+    padding: 40px 20px;
 }
 
 .history-list {
-    space-y: 15px;
+    margin-top: 20px;
 }
 
 .history-item {
-    background: white;
-    border: 1px solid #e9ecef;
+    background: #f8f9fa;
     border-radius: 8px;
     padding: 20px;
+    margin-bottom: 15px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px;
+    transition: all 0.3s;
+}
+
+.history-item:hover {
+    background: #e9ecef;
+    transform: translateX(5px);
 }
 
 .history-info h4 {
@@ -1172,39 +1139,31 @@ html, body {
 
 .history-info p {
     color: #666;
-    font-size: 0.9rem;
     margin-bottom: 3px;
 }
 
 .transaction-id {
-    font-family: monospace;
-    font-size: 0.8rem !important;
-    color: #999 !important;
+    font-size: 0.85rem;
+    color: #999;
 }
 
-/* Error Messages */
-.error-message {
-    background: #f8d7da;
-    color: #721c24;
-    padding: 12px;
-    border-radius: 6px;
-    margin-bottom: 15px;
-    border: 1px solid #f5c6cb;
+.history-status {
+    text-align: right;
 }
 
-/* Transitions */
+/* Transiciones */
 .slide-enter-active, .slide-leave-active {
-    transition: all 0.5s ease-in-out;
+    transition: all 0.3s ease;
 }
 
 .slide-enter-from {
-    transform: translateX(100%);
     opacity: 0;
+    transform: translateX(30px);
 }
 
 .slide-leave-to {
-    transform: translateX(-100%);
     opacity: 0;
+    transform: translateX(-30px);
 }
 
 /* Responsive */
@@ -1217,50 +1176,113 @@ html, body {
         padding: 20px;
     }
 
-    .plans-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .payment-methods {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    .form-row {
-        flex-direction: column;
-        gap: 0;
-    }
-
-    .security-captcha {
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
+    .payment-card {
+        max-width: 100%;
+        padding: 15px;
     }
 
     .text-primary {
         font-size: 2rem;
     }
 
-    .history-item {
-        flex-direction: column;
-        align-items: flex-start;
+    .section-title {
+        font-size: 1.5rem;
+    }
+
+    .plans-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .payment-methods-compact {
+        grid-template-columns: repeat(2, 1fr);
         gap: 10px;
+    }
+
+    .method-text {
+        font-size: 0.8rem;
     }
 
     .current-membership {
         flex-direction: column;
-        gap: 15px;
         text-align: center;
+        gap: 15px;
+    }
+
+    .history-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+
+    .detail-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 5px;
+    }
+
+    .summary-row {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
     }
 }
 
 @media (max-width: 480px) {
-    .payment-methods {
+    .payment-methods-compact {
         grid-template-columns: 1fr;
+        gap: 8px;
     }
 
-    .method-content {
-        flex-direction: row;
-        justify-content: center;
+    .form-row-compact {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .security-input-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .captcha-input-compact {
+        max-width: 100%;
     }
 }
+
+/* Estados de loading */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Animaciones adicionales */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.membership-card {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Mejoras de accesibilidad */
+.form-control-compact:focus,
+.btn-pay-compact:focus,
+.back-btn:focus,
+.btn-continue:focus,
+.btn-secondary:focus,
+.refresh-btn-compact:focus {
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.25);
+}
+
+/* Indicadores de estado */
+.form-control-compact.error {
+    border-color: #dc3545;
+}
+
+.form-control-compact.success {
+    border-color: #28a745;
+}
+
 </style>
