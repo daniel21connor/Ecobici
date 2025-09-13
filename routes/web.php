@@ -1,13 +1,16 @@
 <?php
 
+use App\Http\Controllers\RankingController;
 use App\Http\Controllers\RouteController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\UserRankingController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\StationController;
 use App\Http\Controllers\BikeController;
 use App\Http\Controllers\BikeUsageHistoryController;
 use App\Http\Controllers\DamageReportController;
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -181,4 +184,36 @@ Route::middleware(['auth'])->group(function () {
     Route::put('damage-reports/{id}/status', [DamageReportController::class, 'updateStatus'])->name('damage-reports.update-status');
 });
 
+
+Route::middleware(['auth'])->group(function () {
+
+    // Rutas para Rankings de Usuarios (sin prefijo /api)
+    // Coinciden exactamente con las URLs que usa tu componente Vue
+
+    // Obtener ranking general
+    // GET /rankings
+    Route::get('/rankings', [UserRankingController::class, 'index']);
+
+    // Obtener ranking del usuario actual con su posición
+    // GET /rankings/user
+    Route::get('/rankings/user', [UserRankingController::class, 'getUserRanking']);
+
+    // Forzar actualización de rankings
+    // POST /rankings/update
+    Route::post('/rankings/update', [UserRankingController::class, 'updateRankings']);
+
+    // Obtener estadísticas detalladas del usuario actual
+    // GET /rankings/stats
+    Route::get('/rankings/stats', [UserRankingController::class, 'getUserStats']);
+
+    // Obtener estadísticas de un usuario específico (solo admin)
+    // GET /rankings/stats/{userId}
+    Route::get('/rankings/stats/{userId}', [RankingController::class, 'getUserStats'])
+        ->middleware('admin'); // Solo admins pueden ver stats de otros usuarios
+
+    // Obtener ranking por período
+    // GET /rankings/period?period=month&limit=20
+    Route::get('/rankings/period', [RankingController::class, 'getRankingByPeriod']);
+
+});
 
