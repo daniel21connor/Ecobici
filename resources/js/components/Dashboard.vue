@@ -93,6 +93,54 @@ export default {
             } catch (error) {
                 console.error('Error al cerrar sesión:', error);
             }
+        },
+
+        async loadUsers() {
+            if (this.user.role !== 'admin') return;
+
+            try {
+                const response = await axios.get('/users-catalog', {
+                    params: { search: this.searchTerm }
+                });
+                this.users = response.data.users;
+            } catch (error) {
+                console.error('Error al cargar usuarios:', error);
+            }
+        },
+
+        searchUsers() {
+            // Buscar después de 500ms de pausa en la escritura
+            clearTimeout(this.searchTimeout);
+            this.searchTimeout = setTimeout(() => {
+                this.loadUsers();
+            }, 500);
+        },
+
+        formatDate(date) {
+            if (!date) return 'N/A';
+            return new Date(date).toLocaleDateString('es-GT');
+        },
+
+        async createAdmin() {
+            try {
+                const response = await axios.post('/create-admin', this.adminForm);
+                if (response.data.success) {
+                    alert('Administrador creado exitosamente');
+                    this.showCreateAdmin = false;
+                    this.adminForm = {
+                        name: '',
+                        apellidos: '',
+                        email: '',
+                        dpi: '',
+                        fecha_nacimiento: '',
+                        telefono: '',
+                        password: ''
+                    };
+                    await this.loadUsers(); // Recargar lista
+                }
+            } catch (error) {
+                alert('Error al crear administrador: ' + (error.response?.data?.message || 'Error desconocido'));
+            }
         }
     }
 }
