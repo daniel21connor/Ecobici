@@ -6,6 +6,11 @@
 
 import './bootstrap';
 import { createApp } from 'vue';
+import '../css/app.css';
+import '@fortawesome/fontawesome-free/css/all.css';
+
+
+
 
 /**
  * Next, we will create a fresh Vue application instance. You may then begin
@@ -17,6 +22,10 @@ const app = createApp({});
 
 import ExampleComponent from './components/ExampleComponent.vue';
 app.component('example-component', ExampleComponent);
+import LoginComponent from './components/Login.vue';
+app.component('login-component', LoginComponent);
+import DashboardComponent from './components/Dashboard.vue';
+app.component('dashboard', DashboardComponent);
 
 /**
  * The following block of code may be used to automatically register your
