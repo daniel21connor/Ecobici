@@ -28,6 +28,7 @@ import DashboardComponent from './components/Dashboard.vue';
 app.component('dashboard', DashboardComponent);
 import MembershipPayment from "@/components/MembershipPayment.vue";
 app.component('membership-payment', MembershipPayment);
+<<<<<<< HEAD
 import Estacion from "@/components/Estacion.vue";
 app.component('est', Estacion)
 import BikesList from "@/components/BikesList.vue";
@@ -36,6 +37,13 @@ import UsageHistory from "@/components/UsageHistory.vue";
 app.component('Usage', UsageHistory)
 import DamageReports from "@/components/DamageReports.vue";
 app.component('Damage', DamageReports)
+=======
+import Estacion from './components/Estacion.vue';
+app.component('estacion', Estacion);
+import  UserManagement from './components/UserManagement.vue';
+app.component('user-management', UserManagement);
+
+>>>>>>> origin/connor-dev
 
 /**
  * The following block of code may be used to automatically register your

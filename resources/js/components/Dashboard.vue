@@ -448,7 +448,53 @@
                     </div>
                 </div>
 
-                <!-- Other Sections -->
+                <!-- Bikes Section -->
+                <div v-else-if="activeSection === 'bikes'" class="section">
+                    <div class="card">
+                        <div class="card-content">
+                            <h2 class="section-title">Mis Bicicletas</h2>
+                            <div class="coming-soon">
+                                <p>🚧 Esta sección está en desarrollo</p>
+                                <p class="text-sm">Pronto estará disponible</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reports Section -->
+                <div v-else-if="activeSection === 'reports'" class="section">
+                    <div class="card">
+                        <div class="card-content">
+                            <h2 class="section-title">Reportes</h2>
+                            <div class="coming-soon">
+                                <p>🚧 Esta sección está en desarrollo</p>
+                                <p class="text-sm">Pronto estará disponible</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Users Section (Admin only) -->
+                <div v-else-if="activeSection === 'users'" class="section">
+                    <div class="user-management-container">
+                        <user-management ref="userManagementComponent" />
+                    </div>
+                </div>
+
+                <!-- Settings Section (Admin only) -->
+                <div v-else-if="activeSection === 'settings'" class="section">
+                    <div class="card">
+                        <div class="card-content">
+                            <h2 class="section-title">Configuración</h2>
+                            <div class="coming-soon">
+                                <p>🚧 Esta sección está en desarrollo</p>
+                                <p class="text-sm">Pronto estará disponible</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fallback for any other section -->
                 <div v-else class="section">
                     <div class="card">
                         <div class="card-content">
@@ -469,17 +515,25 @@
 // Importar el componente de membresías y estaciones
 import MembershipPayment from './MembershipPayment.vue';
 import Estacion from './Estacion.vue';
+<<<<<<< HEAD
 import BikesList from './BikesList.vue';          // Nuevo componente
 import UsageHistory from './UsageHistory.vue';    // Nuevo componente
 import DamageReports from './DamageReports.vue';  // Nuevo componente
+=======
+import UserManagement from "@/components/UserManagement.vue";
+>>>>>>> origin/connor-dev
 
 export default {
     components: {
         MembershipPayment,
         Estacion,
+<<<<<<< HEAD
         BikesList,
         UsageHistory,
         DamageReports,
+=======
+        UserManagement,
+>>>>>>> origin/connor-dev
     },
 
     data() {
@@ -636,7 +690,11 @@ export default {
             const titles = {
                 'dashboard': 'Dashboard',
                 'memberships': 'Membresías',
+<<<<<<< HEAD
                 'stations': 'Estacion',
+=======
+                'stations': 'Estaciones',
+>>>>>>> origin/connor-dev
                 'profile': 'Mi Perfil',
                 'bikes': 'Mis Bicicletas',
                 'reports': 'Reportes',
